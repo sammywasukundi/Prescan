@@ -1,0 +1,31 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets & environnement
+.env
+.env.*
+!.env.example
+!.env.local.example
+supabase/.temp/
+supabase/.branches/
+
+# Poids des modèles : ne jamais versionner (voir README, section « Modèle »)
+inference-api/app/models/*.pt
+inference-api/app/models/*.pth
+inference-api/app/models/*.onnx
+
+# Divers
+.DS_Store
+.idea/
+.vscode/
