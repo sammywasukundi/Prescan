@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PROTECTED = ["/dashboard", "/patients", "/analyses", "/assistant", "/pending"];
+const PROTECTED = ["/dashboard", "/patients", "/analyses", "/assistant", "/admin", "/pending"];
 
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request);

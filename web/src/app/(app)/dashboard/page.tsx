@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { AlertTriangle, FlaskConical } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireDoctor } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Tableau de bord" };
 
@@ -19,6 +20,7 @@ interface LatestRow {
 const STATUS_LABEL = { pending: "À valider", confirmed: "Confirmé", corrected: "Corrigé" } as const;
 
 export default async function DashboardPage() {
+  await requireDoctor();
   const supabase = await createClient();
   const count = { count: "exact", head: true } as const;
 

@@ -238,27 +238,31 @@ where id = (select id from auth.users where email = 'admin@exemple.org');
 
 ### Valider un médecin
 
-Chaque médecin s'inscrit lui-même via **Demander un accès**. Pour voir les demandes en attente, exécutez dans le SQL Editor :
+Chaque médecin s'inscrit lui-même via **Demander un accès**. Connectez-vous ensuite avec le compte **administrateur** : vous arrivez sur la page **Administration**.
+
+1. Onglet **Comptes** : les demandes apparaissent sous « En attente de validation ».
+2. Cliquez sur **Approuver**. Le médecin peut alors se connecter et utiliser PreScan.
+3. **Retirer l'accès** suspend un médecin à tout moment ; son compte et ses données restent en base.
+
+Les administrateurs sont redirigés vers `/admin`, les médecins vers `/dashboard`. Chaque approbation ou retrait est inscrit dans l'onglet **Journal d'audit**.
+
+La page Administration propose quatre onglets :
+
+| Onglet | Fonction |
+|---|---|
+| Comptes | approuver / retirer l'accès des médecins |
+| Modèles | enregistrer une version, **activer** celle utilisée pour les nouvelles analyses |
+| Documents de l'assistant | indexer (fichier `.md` / `.txt` ou texte collé), activer, désactiver, supprimer |
+| Journal d'audit | 200 derniers événements, filtrables, en lecture seule |
+
+*Secours en SQL* (Studio → SQL Editor), si la page n'est pas accessible :
 
 ```sql
-select p.id, u.email, p.full_name, p.hospital, p.specialty, p.created_at
-from public.profiles p
-join auth.users u on u.id = p.id
-where not p.approved
-order by p.created_at;
-```
+select p.id, p.email, p.full_name, p.hospital from public.profiles p where not p.approved;
 
-Puis approuvez (par e-mail) :
-
-```sql
-update public.profiles
-set approved = true
+update public.profiles set approved = true
 where id = (select id from auth.users where email = 'docteur@exemple.org');
 ```
-
-Pour retirer l'accès à un médecin : même requête avec `approved = false`.
-
-> Une page d'administration (validation des comptes, modèles, documents, logs) est prévue dans la feuille de route : elle remplacera ces requêtes SQL.
 
 ---
 
@@ -275,6 +279,10 @@ Pour retirer l'accès à un médecin : même requête avec `approved = false`.
 ## Alimenter l'assistant (chat RAG)
 
 L'assistant répond uniquement à partir de documents indexés par un administrateur, et affiche ses sources. Prérequis : la clé `ANTHROPIC_API_KEY` renseignée (étape 3) et un compte **administrateur**.
+
+**Méthode simple (interface).** Compte administrateur → **Administration** → onglet **Documents de l'assistant** → choisissez `supabase/seed/rag/01-fonctionnement-prescan.md` (puis `02-limites-du-modele.md`) → **Indexer le document**.
+
+**Alternative en ligne de commande :**
 
 **Windows (PowerShell)** — à la racine du projet :
 
@@ -322,6 +330,18 @@ Ouvrez ensuite la page **Assistant** (compte médecin) et posez par exemple : «
 
 ---
 
+## Mettre à jour après un `git pull`
+
+```bash
+cd web && npm install                       # nouvelles dépendances éventuelles
+cd ../inference-api && pip install -r requirements-dev.txt
+cd .. && npx supabase migration up          # applique les NOUVELLES migrations sans effacer les données
+```
+
+Relancez ensuite les terminaux B, C et D. N'utilisez pas `db reset` pour cela : il efface les données locales.
+
+---
+
 ## Arrêter et réinitialiser
 
 | Action | Commande |
@@ -344,6 +364,7 @@ Au redémarrage suivant, relancez simplement : `npx supabase start`, puis les te
 | PowerShell : « l'exécution de scripts est désactivée » | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, puis relancez l'activation. |
 | `copy : Cannot find path '…\.env.local.example'` | Vous n'êtes pas dans `web/`. Faites `cd web` (le prompt doit se terminer par `\web>`). |
 | `Invalid supabaseUrl: Provided URL is malformed` | `web/.env.local` est absent, contient encore l'exemple, ou n'a pas été relu. Vérifiez qu'il contient `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`, puis relancez `npm run dev`. |
+| « Seuls les comptes médecin approuvés peuvent créer des patients » | Vous êtes connecté avec un compte **administrateur** (aucun accès aux patients, par conception). Utilisez un second compte, approuvé comme médecin. |
 | Après connexion : « Compte en attente de validation » | Le compte n'est pas approuvé. Voir « Valider un médecin ». |
 | Erreur de téléversement / « examen non créé » | Compte non approuvé, ou connecté avec un autre compte que celui approuvé. |
 | Analyse : « modèle indisponible » | (1) l'API (terminal B) tourne-t-elle avec `--host 0.0.0.0` ? (2) le jeton de `supabase/functions/.env` est-il identique à celui de `inference-api/.env` ? Si vous modifiez l'un, relancez l'API **et** `functions serve`. |

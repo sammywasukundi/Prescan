@@ -7,15 +7,22 @@ import { ThemeToggle } from "./ThemeToggle";
 import { SignOutButton } from "./SignOutButton";
 import { DISCLAIMER } from "@/lib/types";
 
-const NAV = [
+const DOCTOR_NAV = [
   { href: "/dashboard", label: "Tableau de bord" },
   { href: "/patients", label: "Patients" },
   { href: "/analyses/new", label: "Nouvelle analyse" },
   { href: "/assistant", label: "Assistant" },
 ];
 
-export function AppShell({ fullName, children }: { fullName: string; children: React.ReactNode }) {
+// Les administrateurs n'ont volontairement pas accès aux patients ni aux analyses.
+const ADMIN_NAV = [
+  { href: "/admin", label: "Administration" },
+  { href: "/assistant", label: "Assistant" },
+];
+
+export function AppShell({ fullName, role, children }: { fullName: string; role: "doctor" | "admin"; children: React.ReactNode }) {
   const pathname = usePathname();
+  const NAV = role === "admin" ? ADMIN_NAV : DOCTOR_NAV;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -24,7 +31,7 @@ export function AppShell({ fullName, children }: { fullName: string; children: R
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Logo href="/dashboard" />
+          <Logo href={role === "admin" ? "/admin" : "/dashboard"} />
           <nav aria-label="Navigation principale" className="order-3 flex w-full gap-1 overflow-x-auto md:order-none md:w-auto md:flex-1">
             {NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -43,7 +50,7 @@ export function AppShell({ fullName, children }: { fullName: string; children: R
             })}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-sm text-muted sm:inline">{fullName}</span>
+            <span className="hidden text-sm text-muted sm:inline">{fullName}{role === "admin" && <span className="ml-2 rounded-full border border-primary/50 px-2 py-0.5 text-xs text-primary">Admin</span>}</span>
             <ThemeToggle />
             <SignOutButton />
           </div>

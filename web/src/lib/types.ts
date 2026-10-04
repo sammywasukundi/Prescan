@@ -38,3 +38,43 @@ export interface Patient {
 export const DISCLAIMER = "Ce résultat est une aide au dépistage et doit être confirmé par un professionnel de santé.";
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const ACCEPTED_TYPES = ["image/png", "image/jpeg"] as const;
+
+export interface Account {
+  id: string;
+  email: string | null;
+  full_name: string;
+  hospital: string | null;
+  specialty: string | null;
+  role: "doctor" | "admin";
+  approved: boolean;
+  created_at: string;
+}
+
+export interface ModelVersion {
+  id: string;
+  model_key: string;
+  name: string;
+  kind: "single" | "ensemble";
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface RagDocument {
+  id: string;
+  title: string;
+  source: string | null;
+  is_active: boolean;
+  created_at: string;
+  rag_chunks: { count: number }[];
+}
+
+export interface AuditLog {
+  id: number;
+  actor_id: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}

@@ -41,7 +41,14 @@ export function PatientsClient() {
       .insert({ gestational_age_weeks: weeks ? Number(weeks) : null, clinical_notes: notes || null });
     setBusy(false);
     if (error) {
-      setError("Le patient n'a pas pu être créé. Vérifiez l'âge gestationnel (1 à 45 semaines).");
+      // 42501 = refus de la RLS (compte non médecin ou non approuvé) ; 23514 = contrainte CHECK.
+      setError(
+        error.code === "42501"
+          ? "Seuls les comptes médecin approuvés peuvent créer des patients. Les administrateurs n'y ont pas accès : connectez-vous avec un compte médecin."
+          : error.code === "23514"
+            ? "Âge gestationnel invalide (1 à 45 semaines) ou notes trop longues."
+            : "Le patient n'a pas pu être créé. Réessayez.",
+      );
       return;
     }
     formEl.reset();

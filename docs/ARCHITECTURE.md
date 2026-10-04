@@ -96,6 +96,16 @@ Réponse de `/predict` : `exam_id`, `model_name`, `model_version`, `predicted_cl
 
 `patients` (select/insert/update), `ultrasound_exams` (select/insert), `predictions` (select, update des champs de validation), `abnormality_classes`, `model_versions` (lecture ; écriture admin), `rag_documents` / `rag_chunks` (lecture ; écriture admin), `audit_logs` (lecture admin).
 
+## Administration
+
+Page `/admin` (rôle `admin` uniquement, redirection sinon) : comptes, modèles, documents de l'assistant, journal d'audit.
+
+- Les approbations passent par `UPDATE profiles` ; le trigger `profiles_guard` interdit, depuis l'application, de changer un rôle, un e-mail ou **sa propre** approbation. Le rôle `admin` ne s'attribue qu'en SQL (sans JWT).
+- L'activation d'un modèle passe par la fonction `activate_model(uuid)` (réservée aux admins, un seul modèle actif grâce à l'index unique partiel).
+- L'indexation des documents passe par l'Edge Function `rag-ingest`.
+- Les actions sensibles (approbation, retrait, création/activation de modèle, indexation/suppression de document) sont écrites dans `audit_logs` par des triggers ou les fonctions serveur.
+- Les administrateurs n'ont **aucun accès** aux patients, examens, images ni prédictions (RLS).
+
 ## Gestion des erreurs
 
 | Situation | Détection | Comportement |
@@ -129,6 +139,5 @@ Réponse de `/predict` : `exam_id`, `model_name`, `model_version`, `predicted_cl
 ## Feuille de route (prochains commits)
 
 - Historique médical par patient (chronologie, filtres, export PDF).
-- Page d'administration : validation des comptes, versions de modèles, documents RAG, logs d'audit.
 - Alertes et statistiques de répartition des prédictions.
 - Tests e2e (Playwright) et tests RLS (pgTAP).
