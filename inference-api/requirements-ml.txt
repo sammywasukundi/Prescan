@@ -1,0 +1,4 @@
+# Dépendances nécessaires uniquement pour charger de vrais poids DenseNet121.
+# Sans elles, l'API tourne avec le modèle factice (PRESCAN_ALLOW_DUMMY_MODEL=true).
+torch>=2.3
+torchvision>=0.18
