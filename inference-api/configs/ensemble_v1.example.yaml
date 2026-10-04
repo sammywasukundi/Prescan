@@ -1,0 +1,17 @@
+# Exemple de configuration d'ensemble. Renommez en `ensemble_v1.yaml` et listez des
+# modèles existants (chacun avec son propre fichier de config et ses poids).
+model_name: Ensemble
+model_version: ensemble-v1
+kind: ensemble
+aggregation: mean_probabilities
+members:
+  - densenet121-v1
+  - autre-modele-v1                 # à remplacer
+num_classes: 16
+class_names: []                     # repris du premier membre si vide
+preprocessing:                      # ignoré : chaque membre applique son propre prétraitement
+  image_size: [224, 224]
+  color_mode: grayscale_to_rgb
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+low_confidence_threshold: 0.6

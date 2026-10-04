@@ -1,0 +1,39 @@
+# Configuration du modèle servi par POST /predict (model_version = « densenet121-v1 »).
+# Ce fichier DOIT refléter exactement le pipeline utilisé à l'entraînement.
+model_name: DenseNet121
+model_version: densenet121-v1
+kind: single
+architecture: densenet121
+weights_file: densenet121_v1.pt     # à déposer dans inference-api/app/models/ (jamais versionné)
+num_classes: 16
+
+# ⚠ ORDRE EXACT des sorties du modèle (index 0 → 15). Doit correspondre à la table
+#   public.abnormality_classes. Classes PROVISOIRES : à remplacer par les vôtres.
+class_names:
+  - normal
+  - ventriculomegaly
+  - agenesis_corpus_callosum
+  - dandy_walker
+  - holoprosencephaly
+  - arachnoid_cyst
+  - choroid_plexus_cyst
+  - hydrocephalus
+  - microcephaly
+  - macrocephaly
+  - encephalocele
+  - cerebellar_hypoplasia
+  - vermian_agenesis
+  - porencephaly
+  - schizencephaly
+  - intracranial_hemorrhage
+
+preprocessing:
+  image_size: [224, 224]            # [hauteur, largeur]
+  color_mode: grayscale_to_rgb      # grayscale_to_rgb | rgb
+  rescale: 255.0
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+  min_input_size: 64                # rejette les images dont un côté est plus petit
+
+# En dessous de ce seuil de confiance, l'interface affiche une alerte « confiance faible ».
+low_confidence_threshold: 0.6

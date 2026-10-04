@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .errors import InferenceError
-from .routes import health
+from .routes import health, predict
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -33,6 +33,8 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(health.router)
+    app.include_router(predict.router)                    # POST /predict
+    app.include_router(predict.router, prefix="/v1")      # alias versionné : POST /v1/predict
     return app
 
 
