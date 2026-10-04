@@ -1,0 +1,11 @@
+# Configuration minimale pour `supabase start` en local.
+project_id = "prescan"
+
+[functions.predict-exam]
+verify_jwt = true
+
+[functions.rag-chat]
+verify_jwt = true
+
+[functions.rag-ingest]
+verify_jwt = true
