@@ -1,4 +1,4 @@
-# Exemple de configuration d'ensemble. Renommez en `ensemble_v1.yaml` et listez des
+# Exemple de configuration d'ensemble. Renommez en `ensemble-v1.yaml` et listez des
 # modèles existants (chacun avec son propre fichier de config et ses poids).
 model_name: Ensemble
 model_version: ensemble-v1

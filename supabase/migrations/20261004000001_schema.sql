@@ -41,7 +41,7 @@ create trigger on_auth_user_created
 -- ── Classes d'anomalies (16) ────────────────────────────────
 -- class_index = position de la classe dans la sortie du modèle.
 -- ⚠ Doit correspondre EXACTEMENT à l'ordre utilisé à l'entraînement
---   (voir inference-api/configs/densenet121_v1.yaml).
+--   (voir inference-api/configs/densenet121-v1.yaml).
 create table public.abnormality_classes (
   class_index     int primary key check (class_index between 0 and 15),
   class_key       text not null unique,
