@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Jetons de couleur (canaux RGB). Contrastes vérifiés : texte ≥ 4.5:1, éléments d'interface ≥ 3:1. */
+:root {
+  --bg: 248 250 252;        /* #F8FAFC */
+  --surface: 255 255 255;   /* #FFFFFF */
+  --fg: 15 23 42;           /* #0F172A */
+  --muted: 71 85 105;       /* #475569 */
+  --primary: 37 99 235;     /* #2563EB */
+  --primary-fg: 255 255 255;
+  --success: 22 128 61;     /* #15803D — vert plus profond que #16A34A pour le texte sur fond clair */
+  --danger: 220 38 38;      /* #DC2626 */
+  --warn: 180 83 9;         /* #B45309 */
+  --border: 203 213 225;    /* #CBD5E1 — bordures d'interface ≥ 3:1 sur fond clair */
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 11 18 32;           /* #0B1220 — jamais de noir pur */
+  --surface: 17 26 43;      /* #111A2B */
+  --fg: 226 232 240;        /* #E2E8F0 — jamais de blanc pur */
+  --muted: 148 163 184;     /* #94A3B8 */
+  --primary: 59 130 246;    /* #3B82F6 */
+  --primary-fg: 11 18 32;   /* texte sombre sur bouton bleu : ≈ 5:1 (blanc ne donnerait que ≈ 3.7:1) */
+  --success: 34 197 94;     /* #22C55E */
+  --danger: 248 113 113;    /* #F87171 */
+  --warn: 251 191 36;       /* #FBBF24 */
+  --border: 51 65 85;       /* #334155 */
+  color-scheme: dark;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-bg font-sans text-fg antialiased; }
+
+/* Focus clavier toujours visible, dans les deux thèmes. */
+:focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; border-radius: 4px; }
+
+/* Les animations sont coupées si l'utilisateur le demande (en plus de MotionConfig). */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-primary text-primary-fg hover:bg-primary/90; }
+  .btn-secondary { @apply btn border border-border bg-surface text-fg hover:bg-border/40; }
+  .field { @apply w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg placeholder:text-muted/70; }
+  .card { @apply rounded-xl border border-border bg-surface; }
+}
