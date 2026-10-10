@@ -49,3 +49,8 @@ body { @apply bg-bg font-sans text-fg antialiased; }
   .field { @apply w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg placeholder:text-muted/70; }
   .card { @apply rounded-xl border border-border bg-surface; }
 }
+
+/* Les animations Lottie reprennent la couleur du texte courant (thème clair/sombre). */
+.lottie-tint svg path,
+.lottie-tint svg ellipse,
+.lottie-tint svg rect { stroke: currentColor; }
