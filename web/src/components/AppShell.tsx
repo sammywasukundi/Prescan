@@ -5,23 +5,24 @@ import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { PreferencesControls } from "./PreferencesControls";
 import { SignOutButton } from "./SignOutButton";
+import { Avatar } from "./Avatar";
+import { AssistantFab } from "./AssistantFab";
 import { useI18n } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 const DOCTOR_NAV: { href: string; key: MessageKey }[] = [
   { href: "/dashboard", key: "nav.dashboard" },
   { href: "/patients", key: "nav.patients" },
+  { href: "/analyses", key: "nav.analyses" },
   { href: "/analyses/new", key: "nav.newAnalysis" },
-  { href: "/assistant", key: "nav.assistant" },
 ];
 
 // Les administrateurs n'ont volontairement pas accès aux patients ni aux analyses.
 const ADMIN_NAV: { href: string; key: MessageKey }[] = [
   { href: "/admin", key: "nav.administration" },
-  { href: "/assistant", key: "nav.assistant" },
 ];
 
-export function AppShell({ fullName, role, children }: { fullName: string; role: "doctor" | "admin"; children: React.ReactNode }) {
+export function AppShell({ fullName, role, avatarUrl, children }: { fullName: string; role: "doctor" | "admin"; avatarUrl: string | null; children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const NAV = role === "admin" ? ADMIN_NAV : DOCTOR_NAV;
@@ -52,7 +53,17 @@ export function AppShell({ fullName, role, children }: { fullName: string; role:
             })}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-sm text-muted sm:inline">{fullName}{role === "admin" && <span className="ml-2 rounded-full border border-primary/50 px-2 py-0.5 text-xs text-primary">{t("common.admin")}</span>}</span>
+            <Link
+              href="/profile"
+              aria-current={pathname === "/profile" ? "page" : undefined}
+              title={t("nav.profile")}
+              className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-1 pr-3 text-sm hover:bg-border/40"
+            >
+              <Avatar name={fullName} url={avatarUrl} size={32} />
+              <span className="hidden max-w-[10rem] truncate sm:inline">{fullName}</span>
+              {role === "admin" && <span className="hidden rounded-full border border-primary/50 px-2 py-0.5 text-xs text-primary sm:inline">{t("common.admin")}</span>}
+              <span className="sr-only">{t("nav.profile")}</span>
+            </Link>
             <PreferencesControls />
             <SignOutButton />
           </div>
@@ -62,6 +73,8 @@ export function AppShell({ fullName, role, children }: { fullName: string; role:
       <main id="contenu" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {children}
       </main>
+
+      <AssistantFab />
 
       <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted">{t("common.disclaimer")}</footer>
     </div>

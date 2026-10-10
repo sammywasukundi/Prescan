@@ -4,7 +4,7 @@ import { getSessionProfile } from "@/lib/auth";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await getSessionProfile();
   return (
-    <AppShell fullName={profile.full_name || profile.email || ""} role={profile.role}>
+    <AppShell fullName={profile.full_name || profile.email || ""} role={profile.role} avatarUrl={profile.avatar_url}>
       {children}
     </AppShell>
   );

@@ -77,3 +77,15 @@ export interface AuditLog {
   metadata: Record<string, unknown>;
   created_at: string;
 }
+
+export interface MyProfile {
+  id: string;
+  email: string | null;
+  full_name: string;
+  role: "doctor" | "admin";
+  hospital: string | null;
+  specialty: string | null;
+  phone: string | null;
+  bio: string | null;
+  avatar_path: string | null;
+}
