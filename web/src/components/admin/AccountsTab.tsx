@@ -4,8 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Loader2, UserX } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Account } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/client";
+import { dateLocale, type Locale } from "@/lib/i18n/core";
+import type { TFn } from "@/lib/i18n/dictionaries";
 
 export function AccountsTab({ currentUserId }: { currentUserId: string }) {
+  const { t, locale } = useI18n();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -17,7 +21,7 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
       .from("profiles")
       .select("id, email, full_name, hospital, specialty, role, approved, created_at")
       .order("created_at", { ascending: false });
-    if (error) setError("Impossible de charger les comptes.");
+    if (error) setError(t("acc.loadError"));
     setAccounts((data ?? []) as Account[]);
     setLoading(false);
   }, []);
@@ -28,13 +32,13 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
 
   async function setApproved(account: Account, approved: boolean) {
     const who = account.email ?? account.full_name;
-    if (!approved && !window.confirm(`Retirer l'accès de ${who} ? Il ne pourra plus se servir de PreScan.`)) return;
+    if (!approved && !window.confirm(t("acc.confirmRevoke", { who }))) return;
     setBusyId(account.id);
     setError(null);
     const { error } = await createClient().from("profiles").update({ approved }).eq("id", account.id);
     setBusyId(null);
     if (error) {
-      setError("La modification a échoué.");
+      setError(t("acc.updateFailed"));
       return;
     }
     await load();
@@ -52,46 +56,46 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
     };
   }, [accounts, query]);
 
-  if (loading) return <p className="text-muted" role="status">Chargement…</p>;
+  if (loading) return <p className="text-muted" role="status">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-8">
       <div>
-        <label htmlFor="account-search" className="sr-only">Rechercher un compte</label>
-        <input id="account-search" className="field max-w-sm" placeholder="Rechercher (e-mail, nom, établissement)…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <label htmlFor="account-search" className="sr-only">{t("acc.searchLabel")}</label>
+        <input id="account-search" className="field max-w-sm" placeholder={t("acc.search")} value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
-      <Section title="En attente de validation ou suspendus" count={pending.length} empty="Aucune demande en attente.">
+      <Section title={t("acc.pending")} count={pending.length} empty={t("acc.pendingEmpty")}>
         {pending.map((a) => (
-          <Row key={a.id} account={a}>
+          <Row key={a.id} account={a} t={t} locale={locale}>
             <button type="button" disabled={busyId === a.id} onClick={() => setApproved(a, true)} className="btn-primary !py-2">
-              {busyId === a.id ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Check size={16} aria-hidden />} Approuver
+              {busyId === a.id ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Check size={16} aria-hidden />} {t("acc.approve")}
             </button>
           </Row>
         ))}
       </Section>
 
-      <Section title="Médecins approuvés" count={doctors.length} empty="Aucun médecin approuvé.">
+      <Section title={t("acc.doctors")} count={doctors.length} empty={t("acc.doctorsEmpty")}>
         {doctors.map((a) => (
-          <Row key={a.id} account={a}>
+          <Row key={a.id} account={a} t={t} locale={locale}>
             <button type="button" disabled={busyId === a.id} onClick={() => setApproved(a, false)} className="btn-secondary !py-2">
-              {busyId === a.id ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <UserX size={16} aria-hidden />} Retirer l'accès
+              {busyId === a.id ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <UserX size={16} aria-hidden />} {t("acc.revoke")}
             </button>
           </Row>
         ))}
       </Section>
 
-      <Section title="Administrateurs" count={admins.length} empty="Aucun administrateur.">
+      <Section title={t("acc.admins")} count={admins.length} empty={t("acc.adminsEmpty")}>
         {admins.map((a) => (
-          <Row key={a.id} account={a}>
-            <span className="text-sm text-muted">{a.id === currentUserId ? "Vous" : "Géré en base de données"}</span>
+          <Row key={a.id} account={a} t={t} locale={locale}>
+            <span className="text-sm text-muted">{a.id === currentUserId ? t("acc.you") : t("acc.dbManaged")}</span>
           </Row>
         ))}
       </Section>
 
       <p className="text-xs text-muted">
-        Le rôle « administrateur » ne s'attribue jamais depuis l'application : uniquement par SQL, par une personne ayant accès à la base.
+        {t("acc.adminNote")}
       </p>
     </div>
   );
@@ -108,14 +112,14 @@ function Section({ title, count, empty, children }: { title: string; count: numb
   );
 }
 
-function Row({ account, children }: { account: Account; children: React.ReactNode }) {
+function Row({ account, children, t, locale }: { account: Account; children: React.ReactNode; t: TFn; locale: Locale }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <p className="truncate font-medium">{account.full_name || "(sans nom)"}</p>
-        <p className="truncate text-sm text-muted">{account.email ?? "e-mail inconnu"}</p>
+        <p className="truncate font-medium">{account.full_name || t("acc.noName")}</p>
+        <p className="truncate text-sm text-muted">{account.email ?? t("acc.unknownEmail")}</p>
         <p className="text-xs text-muted">
-          {[account.hospital, account.specialty].filter(Boolean).join(" · ") || "—"} · inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}
+          {[account.hospital, account.specialty].filter(Boolean).join(" · ") || "—"} · {t("acc.registered", { date: new Date(account.created_at).toLocaleDateString(dateLocale(locale)) })}
         </p>
       </div>
       {children}

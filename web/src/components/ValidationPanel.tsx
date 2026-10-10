@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Check, Loader2, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { ClassInfo, Prediction } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/client";
+import { dateLocale } from "@/lib/i18n/core";
 
 interface Props {
   prediction: Prediction;
@@ -14,6 +16,7 @@ interface Props {
 }
 
 export function ValidationPanel({ prediction, classes, labels, onValidated }: Props) {
+  const { t, locale } = useI18n();
   const [correcting, setCorrecting] = useState(false);
   const [correctedClass, setCorrectedClass] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -22,7 +25,7 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
 
   async function save(status: "confirmed" | "corrected") {
     if (status === "corrected" && !correctedClass) {
-      setError("Choisissez la classe que vous retenez.");
+      setError(t("val.pickClass"));
       return;
     }
     setBusy(true);
@@ -40,7 +43,7 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
       .single();
     setBusy(false);
     if (error || !data) {
-      setError("La validation n'a pas pu être enregistrée. Réessayez.");
+      setError(t("val.saveFailed"));
       return;
     }
     onValidated(data as Prediction);
@@ -52,14 +55,14 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
       <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} role="status" className="rounded-xl border border-success/50 bg-success/10 p-4">
         <p className="flex items-center gap-2 font-medium text-success">
           <Check size={18} aria-hidden />
-          {corrected ? "Résultat corrigé par le médecin" : "Résultat confirmé par le médecin"}
+          {corrected ? t("val.corrected") : t("val.confirmed")}
         </p>
         {corrected && prediction.corrected_class && (
-          <p className="mt-1 text-sm">Classe retenue : <strong>{labels[prediction.corrected_class] ?? prediction.corrected_class}</strong></p>
+          <p className="mt-1 text-sm">{t("val.retained")}<strong>{labels[prediction.corrected_class] ?? prediction.corrected_class}</strong></p>
         )}
-        {prediction.doctor_feedback && <p className="mt-1 text-sm text-muted">Commentaire : {prediction.doctor_feedback}</p>}
+        {prediction.doctor_feedback && <p className="mt-1 text-sm text-muted">{t("val.comment", { text: prediction.doctor_feedback })}</p>}
         {prediction.validated_at && (
-          <p className="mt-1 text-xs text-muted">Le {new Date(prediction.validated_at).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" })}</p>
+          <p className="mt-1 text-xs text-muted">{t("val.on", { date: new Date(prediction.validated_at).toLocaleString(dateLocale(locale), { dateStyle: "long", timeStyle: "short" }) })}</p>
         )}
       </motion.div>
     );
@@ -68,18 +71,18 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
   return (
     <div className="card space-y-4 p-4">
       <div>
-        <h3 className="font-semibold">Validation médicale</h3>
-        <p className="text-sm text-muted">Confirmez le résultat ou indiquez la classe que vous retenez. Votre décision est enregistrée avec la date et votre identité.</p>
+        <h3 className="font-semibold">{t("val.title")}</h3>
+        <p className="text-sm text-muted">{t("val.help")}</p>
       </div>
 
       {correcting && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 overflow-hidden">
           <div>
-            <label htmlFor="corrected" className="mb-1.5 block text-sm font-medium">Classe retenue</label>
+            <label htmlFor="corrected" className="mb-1.5 block text-sm font-medium">{t("val.retainedLabel")}</label>
             <select id="corrected" className="field" value={correctedClass} onChange={(e) => setCorrectedClass(e.target.value)}>
-              <option value="">Sélectionner…</option>
+              <option value="">{t("val.select")}</option>
               {classes.filter((c) => c.class_key !== prediction.predicted_class).map((c) => (
-                <option key={c.class_key} value={c.class_key}>{c.label_fr}</option>
+                <option key={c.class_key} value={c.class_key}>{labels[c.class_key] ?? c.label_fr}</option>
               ))}
             </select>
           </div>
@@ -87,7 +90,7 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
       )}
 
       <div>
-        <label htmlFor="feedback" className="mb-1.5 block text-sm font-medium">Commentaire (facultatif)</label>
+        <label htmlFor="feedback" className="mb-1.5 block text-sm font-medium">{t("val.optional")}</label>
         <textarea id="feedback" rows={2} maxLength={2000} className="field resize-y" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
       </div>
 
@@ -97,18 +100,18 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
         {!correcting ? (
           <>
             <button type="button" disabled={busy} onClick={() => save("confirmed")} className="btn-primary">
-              {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Check size={16} aria-hidden />} Confirmer le résultat
+              {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Check size={16} aria-hidden />} {t("val.confirm")}
             </button>
             <button type="button" disabled={busy} onClick={() => setCorrecting(true)} className="btn-secondary">
-              <Pencil size={16} aria-hidden /> Corriger
+              <Pencil size={16} aria-hidden /> {t("val.correct")}
             </button>
           </>
         ) : (
           <>
             <button type="button" disabled={busy} onClick={() => save("corrected")} className="btn-primary">
-              {busy && <Loader2 size={16} className="animate-spin" aria-hidden />} Enregistrer la correction
+              {busy && <Loader2 size={16} className="animate-spin" aria-hidden />} {t("val.saveCorrection")}
             </button>
-            <button type="button" disabled={busy} onClick={() => { setCorrecting(false); setError(null); }} className="btn-secondary">Annuler</button>
+            <button type="button" disabled={busy} onClick={() => { setCorrecting(false); setError(null); }} className="btn-secondary">{t("val.cancel")}</button>
           </>
         )}
       </div>

@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "./supabase/client";
+import { useI18n } from "./i18n/client";
 import type { ClassInfo } from "./types";
 
 /** Charge les 16 classes (libellés français) et fournit un dictionnaire class_key → libellé. */
 export function useClasses() {
+  const { locale } = useI18n();
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +27,6 @@ export function useClasses() {
     };
   }, []);
 
-  const labels = useMemo(() => Object.fromEntries(classes.map((c) => [c.class_key, c.label_fr])), [classes]);
+  const labels = useMemo(() => Object.fromEntries(classes.map((c) => [c.class_key, locale === "en" ? c.label_en || c.label_fr : c.label_fr])), [classes, locale]);
   return { classes, labels, loading };
 }

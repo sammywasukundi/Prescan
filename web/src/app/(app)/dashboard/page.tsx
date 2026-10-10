@@ -3,8 +3,13 @@ import type { Metadata } from "next";
 import { AlertTriangle, FlaskConical } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireDoctor } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
+import { dateLocale } from "@/lib/i18n/core";
 
-export const metadata: Metadata = { title: "Tableau de bord" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("dash.title") };
+}
 
 interface LatestRow {
   id: string;
@@ -17,10 +22,9 @@ interface LatestRow {
   exam: { patient: { anonymous_code: string } | null } | null;
 }
 
-const STATUS_LABEL = { pending: "À valider", confirmed: "Confirmé", corrected: "Corrigé" } as const;
-
 export default async function DashboardPage() {
   await requireDoctor();
+  const { t, locale } = await getT();
   const supabase = await createClient();
   const count = { count: "exact", head: true } as const;
 
@@ -34,32 +38,32 @@ export default async function DashboardPage() {
       .select("id, predicted_class, confidence, low_confidence, is_dummy, validation_status, created_at, exam:ultrasound_exams(patient:patients(anonymous_code))")
       .order("created_at", { ascending: false })
       .limit(6),
-    supabase.from("abnormality_classes").select("class_key, label_fr"),
+    supabase.from("abnormality_classes").select("class_key, label_fr, label_en"),
   ]);
 
-  const labels = Object.fromEntries((classes.data ?? []).map((c) => [c.class_key, c.label_fr]));
+  const labels = Object.fromEntries((classes.data ?? []).map((c) => [c.class_key, locale === "en" ? c.label_en || c.label_fr : c.label_fr]));
   const rows = (latest.data ?? []) as unknown as LatestRow[];
   const lowCount = lowConfidence.count ?? 0;
 
   const stats = [
-    { label: "Patients suivis", value: patients.count ?? 0 },
-    { label: "Examens analysés", value: exams.count ?? 0 },
-    { label: "Résultats à valider", value: toValidate.count ?? 0 },
-    { label: "Confiance faible à valider", value: lowCount },
+    { label: t("dash.patients"), value: patients.count ?? 0 },
+    { label: t("dash.exams"), value: exams.count ?? 0 },
+    { label: t("dash.toValidate"), value: toValidate.count ?? 0 },
+    { label: t("dash.lowToValidate"), value: lowCount },
   ];
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
-        <Link href="/analyses/new" className="btn-primary">Nouvelle analyse</Link>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("dash.title")}</h1>
+        <Link href="/analyses/new" className="btn-primary">{t("dash.newAnalysis")}</Link>
       </div>
 
       {lowCount > 0 && (
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-warn/50 bg-warn/10 px-4 py-3 text-sm">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden />
           <p>
-            {lowCount === 1 ? "Un résultat à confiance faible attend" : `${lowCount} résultats à confiance faible attendent`} votre validation. Ils ne doivent pas être utilisés seuls.
+            {lowCount === 1 ? t("dash.lowOne") : t("dash.lowMany", { n: lowCount })}
           </p>
         </div>
       )}
@@ -74,11 +78,11 @@ export default async function DashboardPage() {
       </dl>
 
       <section aria-labelledby="latest">
-        <h2 id="latest" className="mb-3 text-lg font-semibold">Dernières analyses</h2>
+        <h2 id="latest" className="mb-3 text-lg font-semibold">{t("dash.latest")}</h2>
         {rows.length === 0 ? (
           <div className="card p-8 text-center">
-            <p className="text-muted">Aucune analyse pour le moment.</p>
-            <Link href="/analyses/new" className="btn-primary mt-4">Lancer une première analyse</Link>
+            <p className="text-muted">{t("dash.none")}</p>
+            <Link href="/analyses/new" className="btn-primary mt-4">{t("dash.first")}</Link>
           </div>
         ) : (
           <ul className="card divide-y divide-border">
@@ -90,15 +94,15 @@ export default async function DashboardPage() {
                     <span className="ml-2 tabular-nums text-sm text-muted">{Math.round(r.confidence * 100)} %</span>
                   </p>
                   <p className="text-sm text-muted">
-                    Patient {r.exam?.patient?.anonymous_code ?? "—"} · {new Date(r.created_at).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                    {t("dash.patient", { code: r.exam?.patient?.anonymous_code ?? "—" })} · {new Date(r.created_at).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {r.is_dummy && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-warn/60 px-2 py-0.5 text-warn"><FlaskConical size={12} aria-hidden /> Modèle factice</span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-warn/60 px-2 py-0.5 text-warn"><FlaskConical size={12} aria-hidden /> {t("dash.dummy")}</span>
                   )}
-                  {r.low_confidence && <span className="rounded-full border border-warn/60 px-2 py-0.5 text-warn">Confiance faible</span>}
-                  <span className="rounded-full border border-border px-2 py-0.5 text-muted">{STATUS_LABEL[r.validation_status]}</span>
+                  {r.low_confidence && <span className="rounded-full border border-warn/60 px-2 py-0.5 text-warn">{t("dash.low")}</span>}
+                  <span className="rounded-full border border-border px-2 py-0.5 text-muted">{t(`status.${r.validation_status}` as const)}</span>
                 </div>
               </li>
             ))}

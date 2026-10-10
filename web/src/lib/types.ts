@@ -35,7 +35,6 @@ export interface Patient {
   created_at: string;
 }
 
-export const DISCLAIMER = "Ce résultat est une aide au dépistage et doit être confirmé par un professionnel de santé.";
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const ACCEPTED_TYPES = ["image/png", "image/jpeg"] as const;
 

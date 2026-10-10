@@ -5,35 +5,37 @@ import { AccountsTab } from "./AccountsTab";
 import { ModelsTab } from "./ModelsTab";
 import { DocumentsTab } from "./DocumentsTab";
 import { AuditTab } from "./AuditTab";
+import { useI18n } from "@/lib/i18n/client";
 
 const TABS = [
-  { id: "accounts", label: "Comptes" },
-  { id: "models", label: "Modèles" },
-  { id: "documents", label: "Documents de l'assistant" },
-  { id: "audit", label: "Journal d'audit" },
+  { id: "accounts", key: "adm.tab.accounts" },
+  { id: "models", key: "adm.tab.models" },
+  { id: "documents", key: "adm.tab.documents" },
+  { id: "audit", key: "adm.tab.audit" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
 export function AdminClient({ currentUserId }: { currentUserId: string }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<TabId>("accounts");
 
   return (
     <div className="space-y-6">
-      <div role="tablist" aria-label="Sections d'administration" className="flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map((t) => (
+      <div role="tablist" aria-label={t("adm.tabsAria")} className="flex gap-1 overflow-x-auto border-b border-border">
+        {TABS.map((tb) => (
           <button
-            key={t.id}
+            key={tb.id}
             role="tab"
-            id={`tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`panel-${t.id}`}
+            id={`tab-${tb.id}`}
+            aria-selected={tab === tb.id}
+            aria-controls={`panel-${tb.id}`}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(tb.id)}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.id ? "border-primary text-primary" : "border-transparent text-muted hover:text-fg"
+              tab === tb.id ? "border-primary text-primary" : "border-transparent text-muted hover:text-fg"
             }`}
           >
-            {t.label}
+            {t(tb.key)}
           </button>
         ))}
       </div>

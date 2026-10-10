@@ -7,6 +7,7 @@ import { ProbabilityBars } from "./ProbabilityBars";
 import { ValidationPanel } from "./ValidationPanel";
 import { MedicalDisclaimer } from "./MedicalDisclaimer";
 import type { ClassInfo, Prediction } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/client";
 
 interface Props {
   prediction: Prediction;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function PredictionResult({ prediction, previewUrl, classes, labels, onValidated }: Props) {
+  const { t } = useI18n();
   const ranked = Object.entries(prediction.probabilities).sort((a, b) => b[1] - a[1]);
   const alternatives = ranked.filter(([key]) => key !== prediction.predicted_class).slice(0, 3);
   const mainLabel = labels[prediction.predicted_class] ?? prediction.predicted_class;
@@ -26,25 +28,25 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
       {prediction.is_dummy && (
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm">
           <FlaskConical size={18} className="mt-0.5 shrink-0 text-danger" aria-hidden />
-          <p><strong>Modèle factice de développement.</strong> Ce résultat est généré au hasard et n'a aucune valeur clinique.</p>
+          <p><strong>{t("res.dummyTitle")}</strong> {t("res.dummyBody")}</p>
         </div>
       )}
       {prediction.low_confidence && (
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-warn/60 bg-warn/10 px-4 py-3 text-sm">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden />
-          <p><strong>Confiance faible.</strong> Le modèle est peu sûr de ce résultat : ne l'utilisez pas seul et vérifiez la qualité de l'image.</p>
+          <p><strong>{t("res.lowTitle")}</strong> {t("res.lowBody")}</p>
         </div>
       )}
 
       <section aria-labelledby="principal" className="card grid gap-6 p-5 md:grid-cols-[minmax(0,14rem)_1fr_auto] md:items-center">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="Échographie analysée" className="max-h-52 w-full rounded-lg bg-black object-contain" />
+          <img src={previewUrl} alt={t("res.image")} className="max-h-52 w-full rounded-lg bg-black object-contain" />
         ) : (
           <div className="hidden md:block" />
         )}
         <div>
-          <p className="text-sm text-muted">Classe la plus probable</p>
+          <p className="text-sm text-muted">{t("res.top")}</p>
           <motion.h2
             id="principal"
             className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl"
@@ -63,7 +65,7 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
       </section>
 
       <section aria-labelledby="alternatives">
-        <h3 id="alternatives" className="mb-3 font-semibold">Classes alternatives</h3>
+        <h3 id="alternatives" className="mb-3 font-semibold">{t("res.alternatives")}</h3>
         <ol className="grid gap-3 sm:grid-cols-3">
           {alternatives.map(([key, p], i) => (
             <motion.li
@@ -73,7 +75,7 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
             >
-              <p className="text-sm text-muted">{i + 2}ᵉ choix</p>
+              <p className="text-sm text-muted">{t("res.nth", { n: i + 2 })}</p>
               <p className="mt-0.5 font-medium">{labels[key] ?? key}</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">{(p * 100).toFixed(1)} %</p>
             </motion.li>
@@ -82,7 +84,7 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
       </section>
 
       <section aria-labelledby="toutes" className="card p-5">
-        <h3 id="toutes" className="mb-4 font-semibold">Probabilités des {ranked.length} classes</h3>
+        <h3 id="toutes" className="mb-4 font-semibold">{t("res.all", { n: ranked.length })}</h3>
         <ProbabilityBars probabilities={prediction.probabilities} labels={labels} highlight={prediction.predicted_class} />
       </section>
 

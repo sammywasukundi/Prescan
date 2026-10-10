@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { Check, Circle, Loader2, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n/client";
 
 export type StepState = "pending" | "active" | "done" | "failed";
 export interface Step {
@@ -10,8 +11,9 @@ export interface Step {
 }
 
 export function AnalysisProgress({ steps }: { steps: Step[] }) {
+  const { t } = useI18n();
   return (
-    <ol className="card space-y-3 p-4" aria-label="Progression de l'analyse" role="status" aria-live="polite">
+    <ol className="card space-y-3 p-4" aria-label={t("step.progress")} role="status" aria-live="polite">
       {steps.map((s) => (
         <li key={s.label} className="flex items-center gap-3 text-sm">
           <span className="flex h-6 w-6 items-center justify-center">
@@ -27,7 +29,7 @@ export function AnalysisProgress({ steps }: { steps: Step[] }) {
           <span className={s.state === "pending" ? "text-muted" : s.state === "failed" ? "text-danger" : "text-fg"}>
             {s.label}
             <span className="sr-only">
-              {s.state === "done" ? " : terminé" : s.state === "active" ? " : en cours" : s.state === "failed" ? " : échec" : " : en attente"}
+              {t(`step.${s.state}` as const)}
             </span>
           </span>
         </li>

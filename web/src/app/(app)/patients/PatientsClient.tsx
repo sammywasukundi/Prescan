@@ -5,8 +5,11 @@ import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Patient } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/client";
+import { dateLocale } from "@/lib/i18n/core";
 
 export function PatientsClient() {
+  const { t, locale } = useI18n();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -17,7 +20,7 @@ export function PatientsClient() {
       .from("patients")
       .select("id, anonymous_code, gestational_age_weeks, clinical_notes, created_at")
       .order("created_at", { ascending: false });
-    if (error) setError("Impossible de charger les patients.");
+    if (error) setError(t("pat.loadError"));
     setPatients((data ?? []) as Patient[]);
     setLoading(false);
   }, []);
@@ -44,10 +47,10 @@ export function PatientsClient() {
       // 42501 = refus de la RLS (compte non médecin ou non approuvé) ; 23514 = contrainte CHECK.
       setError(
         error.code === "42501"
-          ? "Seuls les comptes médecin approuvés peuvent créer des patients. Les administrateurs n'y ont pas accès : connectez-vous avec un compte médecin."
+          ? t("pat.forbidden")
           : error.code === "23514"
-            ? "Âge gestationnel invalide (1 à 45 semaines) ou notes trop longues."
-            : "Le patient n'a pas pu être créé. Réessayez.",
+            ? t("pat.badValue")
+            : t("pat.createFailed"),
       );
       return;
     }
@@ -58,11 +61,11 @@ export function PatientsClient() {
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <section aria-labelledby="liste">
-        <h1 id="liste" className="mb-4 text-2xl font-semibold tracking-tight">Patients</h1>
+        <h1 id="liste" className="mb-4 text-2xl font-semibold tracking-tight">{t("pat.title")}</h1>
         {loading ? (
-          <p className="text-muted" role="status">Chargement…</p>
+          <p className="text-muted" role="status">{t("common.loading")}</p>
         ) : patients.length === 0 ? (
-          <div className="card p-8 text-center text-muted">Aucun patient. Créez un premier dossier pseudonymisé.</div>
+          <div className="card p-8 text-center text-muted">{t("pat.empty")}</div>
         ) : (
           <ul className="card divide-y divide-border">
             {patients.map((p) => (
@@ -70,12 +73,12 @@ export function PatientsClient() {
                 <div>
                   <p className="font-mono text-sm font-medium">{p.anonymous_code}</p>
                   <p className="text-sm text-muted">
-                    {p.gestational_age_weeks ? `${p.gestational_age_weeks} semaines d'aménorrhée · ` : ""}
-                    créé le {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                    {p.gestational_age_weeks ? t("pat.weeks", { n: p.gestational_age_weeks }) : ""}
+                    {t("pat.created", { date: new Date(p.created_at).toLocaleDateString(dateLocale(locale)) })}
                   </p>
                   {p.clinical_notes && <p className="mt-1 max-w-xl text-sm">{p.clinical_notes}</p>}
                 </div>
-                <Link href={`/analyses/new?patient=${p.id}`} className="btn-secondary">Nouvelle analyse</Link>
+                <Link href={`/analyses/new?patient=${p.id}`} className="btn-secondary">{t("dash.newAnalysis")}</Link>
               </li>
             ))}
           </ul>
@@ -84,22 +87,22 @@ export function PatientsClient() {
 
       <aside>
         <form onSubmit={onCreate} className="card space-y-4 p-5" aria-labelledby="nouveau">
-          <h2 id="nouveau" className="text-lg font-semibold">Nouveau patient</h2>
+          <h2 id="nouveau" className="text-lg font-semibold">{t("pat.new")}</h2>
           <p className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2 text-xs">
-            Ne saisissez aucune donnée identifiante : ni nom, ni date de naissance, ni numéro de dossier. Un code anonyme est généré automatiquement.
+            {t("pat.privacy")}
           </p>
           <div>
-            <label htmlFor="weeks" className="mb-1.5 block text-sm font-medium">Âge gestationnel (semaines)</label>
+            <label htmlFor="weeks" className="mb-1.5 block text-sm font-medium">{t("pat.gestAge")}</label>
             <input id="weeks" name="weeks" type="number" min={1} max={45} inputMode="numeric" className="field" />
           </div>
           <div>
-            <label htmlFor="notes" className="mb-1.5 block text-sm font-medium">Notes cliniques</label>
+            <label htmlFor="notes" className="mb-1.5 block text-sm font-medium">{t("pat.notes")}</label>
             <textarea id="notes" name="notes" rows={4} maxLength={2000} className="field resize-y" />
           </div>
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <button type="submit" disabled={busy} className="btn-primary w-full">
             {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Plus size={16} aria-hidden />}
-            Créer le patient
+            {t("pat.create")}
           </button>
         </form>
       </aside>

@@ -6,7 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { RotateCcw, ScanSearch } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ERROR_MESSAGES, PredictError, requestPrediction } from "@/lib/predict";
+import { PredictError, predictErrorKey, requestPrediction } from "@/lib/predict";
+import { useI18n } from "@/lib/i18n/client";
 import { detectMime, validateImageFile } from "@/lib/validateImage";
 import { useClasses } from "@/lib/useClasses";
 import type { Patient, Prediction } from "@/lib/types";
@@ -19,13 +20,14 @@ type Phase = "idle" | "uploading" | "analyzing" | "done" | "error";
 
 export function NewAnalysis() {
   const search = useSearchParams();
+  const { t } = useI18n();
   const { classes, labels } = useClasses();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState(search.get("patient") ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null); // code d'erreur
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -61,7 +63,7 @@ export function NewAnalysis() {
     const problem = await validateImageFile(next);
     if (problem) {
       setFile(null);
-      setFileError(ERROR_MESSAGES[problem]);
+      setFileError(problem);
       return;
     }
     setFile(next);
@@ -115,11 +117,11 @@ export function NewAnalysis() {
   const busy = phase === "uploading" || phase === "analyzing";
   const steps: Step[] = [
     {
-      label: "Téléversement sécurisé de l'image",
+      label: t("new.stepUpload"),
       state: phase === "uploading" ? "active" : phase === "error" && !uploaded ? "failed" : phase === "idle" ? "pending" : "done",
     },
     {
-      label: "Analyse par le modèle",
+      label: t("new.stepAnalyze"),
       state: phase === "analyzing" ? "active" : phase === "done" ? "done" : phase === "error" && uploaded ? "failed" : "pending",
     },
   ];
@@ -127,10 +129,10 @@ export function NewAnalysis() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Nouvelle analyse</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("new.title")}</h1>
         {phase === "done" && (
           <button type="button" onClick={startOver} className="btn-secondary">
-            <RotateCcw size={16} aria-hidden /> Analyser une autre image
+            <RotateCcw size={16} aria-hidden /> {t("new.another")}
           </button>
         )}
       </div>
@@ -143,10 +145,10 @@ export function NewAnalysis() {
         ) : (
           <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="mx-auto max-w-2xl space-y-5">
             <div>
-              <label htmlFor="patient" className="mb-1.5 block text-sm font-medium">Patient</label>
+              <label htmlFor="patient" className="mb-1.5 block text-sm font-medium">{t("new.patient")}</label>
               {patients.length === 0 ? (
                 <p className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-muted">
-                  Aucun patient. <Link href="/patients" className="font-medium text-primary underline">Créez d'abord un dossier pseudonymisé</Link>.
+                  {t("new.noPatient")} <Link href="/patients" className="font-medium text-primary underline">{t("new.createFirst")}</Link>.
                 </p>
               ) : (
                 <select
@@ -156,7 +158,7 @@ export function NewAnalysis() {
                   disabled={busy}
                   onChange={(e) => { setPatientId(e.target.value); resetExam(); }}
                 >
-                  <option value="">Sélectionner un patient…</option>
+                  <option value="">{t("new.selectPatient")}</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.anonymous_code}{p.gestational_age_weeks ? ` · ${p.gestational_age_weeks} SA` : ""}
@@ -166,19 +168,19 @@ export function NewAnalysis() {
               )}
             </div>
 
-            <UploadDropzone file={file} previewUrl={previewUrl} error={fileError} disabled={busy} onSelect={onSelectFile} />
+            <UploadDropzone file={file} previewUrl={previewUrl} error={fileError ? t(predictErrorKey(fileError)) : null} disabled={busy} onSelect={onSelectFile} />
 
             {(busy || phase === "error") && <AnalysisProgress steps={steps} />}
 
             {phase === "error" && errorCode && (
               <div role="alert" className="rounded-lg border border-danger/50 bg-danger/10 px-4 py-3 text-sm text-danger">
-                {ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.unknown}
+                {t(predictErrorKey(errorCode))}
               </div>
             )}
 
             <button type="button" onClick={run} disabled={!file || !patientId || busy} className="btn-primary w-full py-3">
               <ScanSearch size={18} aria-hidden />
-              {busy ? "Analyse en cours…" : phase === "error" ? "Réessayer" : "Analyser l'image"}
+              {busy ? t("new.running") : phase === "error" ? t("new.retry") : t("new.analyze")}
             </button>
 
             <MedicalDisclaimer />

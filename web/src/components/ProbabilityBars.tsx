@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useI18n } from "@/lib/i18n/client";
 
 interface Props {
   probabilities: Record<string, number>;
@@ -10,10 +11,11 @@ interface Props {
 
 /** Barres triées par probabilité décroissante ; chaque barre se remplit avec un léger décalage. */
 export function ProbabilityBars({ probabilities, labels, highlight }: Props) {
+  const { t } = useI18n();
   const rows = Object.entries(probabilities).sort((a, b) => b[1] - a[1]);
 
   return (
-    <ul className="space-y-2.5" aria-label="Probabilité de chacune des classes">
+    <ul className="space-y-2.5" aria-label={t("res.allAria")}>
       {rows.map(([key, p], i) => {
         const label = labels[key] ?? key;
         const isTop = key === highlight;

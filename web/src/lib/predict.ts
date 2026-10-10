@@ -1,29 +1,23 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createClient } from "./supabase/client";
 import type { Prediction } from "./types";
+import type { MessageKey } from "./i18n/dictionaries";
 
-// Messages affichés au médecin pour chaque code d'erreur (Edge Function, API d'inférence ou client).
-export const ERROR_MESSAGES: Record<string, string> = {
-  unsupported_format: "Format non pris en charge : utilisez une image PNG ou JPEG.",
-  image_too_large: "L'image dépasse la taille maximale autorisée (10 Mo).",
-  empty_file: "Le fichier est vide.",
-  unreadable_image: "L'image est illisible ou trop petite. Essayez un autre fichier.",
-  upload_failed: "Le téléversement de l'image a échoué. Vérifiez votre connexion puis réessayez.",
-  exam_create_failed: "L'examen n'a pas pu être créé. Vérifiez que le patient vous appartient et réessayez.",
-  model_unavailable: "Le modèle d'analyse est momentanément indisponible. Réessayez dans quelques instants.",
-  inference_timeout: "L'analyse a pris trop de temps. Réessayez.",
-  already_processing: "Une analyse est déjà en cours pour cet examen.",
-  already_completed: "Cet examen a déjà été analysé.",
-  not_approved: "Votre compte n'a pas encore été validé par un administrateur.",
-  unauthenticated: "Votre session a expiré. Reconnectez-vous.",
-  network_error: "Connexion impossible. Vérifiez votre réseau et réessayez.",
-  prediction_save_failed: "Le résultat n'a pas pu être enregistré. Réessayez.",
-  unknown: "Une erreur inattendue est survenue. Réessayez.",
-};
+/** Clé de message (dictionnaire i18n) correspondant à un code d'erreur. */
+export function predictErrorKey(code: string): MessageKey {
+  const key = `err.${code}` as MessageKey;
+  return (KNOWN as readonly string[]).includes(code) ? key : "err.unknown";
+}
+
+const KNOWN = [
+  "unsupported_format", "image_too_large", "empty_file", "unreadable_image", "upload_failed", "exam_create_failed",
+  "model_unavailable", "inference_timeout", "already_processing", "already_completed", "not_approved",
+  "unauthenticated", "network_error", "prediction_save_failed", "unknown",
+] as const;
 
 export class PredictError extends Error {
   constructor(public code: string) {
-    super(ERROR_MESSAGES[code] ?? ERROR_MESSAGES.unknown);
+    super(code);
   }
 }
 
