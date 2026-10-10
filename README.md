@@ -1,90 +1,92 @@
+**English** · [Français](README.fr.md)
+
 # PreScan
 
-Plateforme d'aide au dépistage des anomalies cérébrales fœtales à partir d'images d'échographie prénatale, réservée à des médecins authentifiés. Un médecin téléverse une image ; PreScan la fait classer par un modèle (DenseNet121, ensemble possible) parmi 16 catégories, affiche la confiance et les probabilités, et laisse le médecin valider ou corriger.
+A screening-aid platform for fetal brain abnormalities from prenatal ultrasound images, reserved for authenticated physicians. A physician uploads an image; PreScan has a model (DenseNet121, ensemble possible) classify it into 16 categories, shows the confidence and the probabilities, and lets the physician validate or correct the result.
 
-> Ce résultat est une aide au dépistage et doit être confirmé par un professionnel de santé.
+> This result is a screening aid and must be confirmed by a healthcare professional.
 
-**État actuel : prototype.**
+**Current status: prototype.**
 
-- Le modèle fourni est un **modèle factice** : ses résultats sont aléatoires et signalés comme tels dans l'interface (bandeau rouge).
-- Les 16 classes du schéma sont **provisoires** : remplacez-les par les vôtres (voir `docs/ARCHITECTURE.md`, section « Intégrer le vrai modèle »).
+- The bundled model is a **dummy model**: its results are random and flagged as such in the interface (red banner).
+- The 16 classes in the schema are **provisional**: replace them with your own (see `docs/ARCHITECTURE.md`, section "Plugging in the real model").
 
-| Dossier | Contenu |
+| Folder | Contents |
 |---|---|
-| `web/` | Next.js 15, React 19, Tailwind, Motion, thème clair/sombre |
-| `supabase/` | migrations (schéma, RLS, pgvector), Edge Functions, documents RAG d'amorçage |
-| `inference-api/` | API FastAPI `POST /predict`, prétraitement configurable, tests |
-| `docs/` | architecture, endpoints, déploiement |
+| `web/` | Next.js 15, React 19, Tailwind, Motion, Lottie, light/dark theme, French/English |
+| `supabase/` | migrations (schema, RLS, pgvector), Edge Functions, seed RAG documents |
+| `inference-api/` | FastAPI `POST /predict` API, configurable preprocessing, tests |
+| `docs/` | architecture, endpoints, deployment |
 
 ---
 
-## Comment ça s'articule
+## How it fits together
 
 ```text
-Navigateur ──▶ web (Next.js, :3000) ──▶ Supabase local (:54321)
-                                           │  Auth · Base · Stockage privé
-                                           ▼
-                                   Edge Functions ──▶ API FastAPI (:8000)
-                                                      modèle factice ou réel
+Browser ──▶ web (Next.js, :3000) ──▶ Local Supabase (:54321)
+                                        │  Auth · Database · Private storage
+                                        ▼
+                                Edge Functions ──▶ FastAPI API (:8000)
+                                                   dummy or real model
 ```
 
-Le navigateur ne parle jamais directement à l'API d'inférence : tout passe par les Edge Functions, qui vérifient la session.
+The browser never talks to the inference API directly: everything goes through the Edge Functions, which check the session.
 
 ---
 
-## Prérequis
+## Prerequisites
 
-| Outil | Version | Vérification |
+| Tool | Version | Check |
 |---|---|---|
-| [Git](https://git-scm.com/) | récente | `git --version` |
-| [Node.js](https://nodejs.org/) | 20 ou plus (22 recommandé) | `node --version` |
-| [Python](https://www.python.org/) | 3.11 ou plus (testé en 3.12) | `python --version` (`py --version` sous Windows) |
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | démarré | `docker info` ne doit pas afficher d'erreur |
+| [Git](https://git-scm.com/) | recent | `git --version` |
+| [Node.js](https://nodejs.org/) | 20 or later (22 recommended) | `node --version` |
+| [Python](https://www.python.org/) | 3.11 or later (tested on 3.12) | `python --version` (`py --version` on Windows) |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | running | `docker info` must not print an error |
 
-La CLI Supabase n'a pas besoin d'être installée : toutes les commandes ci-dessous utilisent `npx supabase`.
+The Supabase CLI does not need to be installed: every command below uses `npx supabase`.
 
-> **Windows :** les commandes sont données pour **PowerShell**. Les blocs « macOS / Linux » donnent les équivalents bash.
+> **Windows:** commands are given for **PowerShell**. The "macOS / Linux" blocks give the bash equivalents.
 
 ---
 
-## Démarrage local
+## Running locally
 
-Vous allez utiliser **4 terminaux** (dans VS Code : Terminal → New Terminal, puis le bouton **+**). Les terminaux B, C et D restent ouverts tant que l'application tourne.
+You will use **4 terminals** (in VS Code: Terminal → New Terminal, then the **+** button). Terminals B, C and D stay open as long as the app is running.
 
-| Terminal | Rôle |
+| Terminal | Role |
 |---|---|
-| A | commandes ponctuelles (Supabase, vérifications) |
-| B | API d'inférence (FastAPI) |
+| A | one-off commands (Supabase, checks) |
+| B | inference API (FastAPI) |
 | C | Edge Functions |
 | D | Frontend (Next.js) |
 
-Placez-vous à la **racine du projet** (le dossier qui contient `web/`, `supabase/` et `inference-api/`).
+Go to the **project root** (the folder that contains `web/`, `supabase/` and `inference-api/`).
 
-### Étape 1 — Supabase local *(terminal A)*
+### Step 1 — Local Supabase *(terminal A)*
 
 ```bash
 npx supabase start
 npx supabase db reset
 ```
 
-- `start` est long la première fois (téléchargement des images Docker).
-- `db reset` applique les migrations : tables, sécurité (RLS), bucket privé, 16 classes provisoires.
-- ⚠ `db reset` **efface toutes les données locales** (comptes, patients, analyses). Ne le relancez pas par réflexe.
+- `start` is slow the first time (Docker images are downloaded).
+- `db reset` applies the migrations: tables, security (RLS), private buckets, 16 provisional classes.
+- ⚠ `db reset` **erases all local data** (accounts, patients, analyses). Do not run it out of habit.
 
-À la fin de `start`, notez :
+When `start` finishes, note:
 
-- **Project URL** : `http://127.0.0.1:54321`
-- **Publishable key** : `sb_publishable_…` (appelée « anon key » dans les anciennes versions)
-- **Studio** : http://127.0.0.1:54323 (interface d'administration de la base)
-- **Mailpit** : http://127.0.0.1:54324 (boîte mail factice : les e-mails de confirmation s'y affichent)
+- **Project URL**: `http://127.0.0.1:54321`
+- **Publishable key**: `sb_publishable_…` (called "anon key" in older versions)
+- **Studio**: http://127.0.0.1:54323 (database admin interface)
+- **Mailpit**: http://127.0.0.1:54324 (fake mailbox: confirmation emails show up here)
 
-Pour réafficher ces valeurs plus tard : `npx supabase status`.
+To display these values again later: `npx supabase status`.
 
-**Vérification :** dans Studio → *Table Editor*, vous voyez `profiles`, `patients`, `ultrasound_exams`, `predictions`, `abnormality_classes` (16 lignes)… et dans *Storage*, le bucket `ultrasounds`.
+**Check:** in Studio → *Table Editor* you see `profiles`, `patients`, `ultrasound_exams`, `predictions`, `abnormality_classes` (16 rows)… and in *Storage*, the `ultrasounds` and `avatars` buckets.
 
-> Ne copiez jamais la clé **Secret** (`sb_secret_…`) dans un fichier du projet ni dans un message.
+> Never copy the **Secret** key (`sb_secret_…`) into a project file or a message.
 
-### Étape 2 — API d'inférence *(terminal B)*
+### Step 2 — Inference API *(terminal B)*
 
 **Windows (PowerShell)**
 
@@ -94,7 +96,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 
-# Génère le secret partagé et l'enregistre dans inference-api\.env (ignoré par git)
+# Generate the shared secret and save it to inference-api\.env (ignored by git)
 $token = python -c "import secrets; print(secrets.token_hex(24))"
 "PRESCAN_SERVICE_TOKEN=$token" | Out-File -Encoding ascii .env
 
@@ -102,7 +104,7 @@ pytest -q
 uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
 ```
 
-Si PowerShell refuse d'activer l'environnement (« l'exécution de scripts est désactivée »), tapez d'abord `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. Si `python` n'est pas reconnu, utilisez `py`.
+If PowerShell refuses to activate the environment ("running scripts is disabled"), first type `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. If `python` is not recognised, use `py`.
 
 **macOS / Linux (bash)**
 
@@ -118,17 +120,17 @@ pytest -q
 uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
 ```
 
-**Vérification :**
+**Check:**
 
-- `pytest -q` affiche `22 passed`.
-- http://127.0.0.1:8000/health renvoie `{"status":"ok"}`.
-- http://127.0.0.1:8000/ready renvoie `"status":"ready"` avec `"is_dummy":true` (modèle factice actif).
+- `pytest -q` prints `22 passed`.
+- http://127.0.0.1:8000/health returns `{"status":"ok"}`.
+- http://127.0.0.1:8000/ready returns `"status":"ready"` with `"is_dummy":true` (dummy model active).
 
-> `--host 0.0.0.0` permet aux conteneurs Docker (Edge Functions) d'atteindre l'API. Réservé au développement : l'API exige de toute façon le jeton de service.
+> `--host 0.0.0.0` lets the Docker containers (Edge Functions) reach the API. Development only: the API requires the service token anyway.
 
-### Étape 3 — Edge Functions *(terminal A, puis C)*
+### Step 3 — Edge Functions *(terminal A, then C)*
 
-Dans le **terminal A**, à la racine du projet, créez le fichier de configuration des fonctions. Il reprend automatiquement le jeton de l'étape 2.
+In **terminal A**, from the project root, create the functions configuration file. It automatically reuses the token from step 2.
 
 **Windows (PowerShell)**
 
@@ -142,7 +144,7 @@ RAG_LLM_MODEL=claude-sonnet-5-5
 "@ | Out-File -Encoding ascii supabase\functions\.env
 ```
 
-La ligne `"@` de fin doit commencer tout à gauche, sans espace.
+The closing `"@` line must start at the far left, with no space.
 
 **macOS / Linux (bash)**
 
@@ -156,26 +158,26 @@ RAG_LLM_MODEL=claude-sonnet-5-5
 ENVFILE
 ```
 
-Puis, dans le **terminal C**, démarrez les fonctions :
+Then, in **terminal C**, start the functions:
 
 ```bash
 npx supabase functions serve --env-file supabase/functions/.env
 ```
 
-(Sous Windows, écrivez `supabase\functions\.env`.)
+(On Windows, write `supabase\functions\.env`.)
 
-- `ANTHROPIC_API_KEY` n'est nécessaire que pour la page **Assistant**. Ouvrez `supabase/functions/.env` dans votre éditeur pour la coller après le `=`, puis relancez `functions serve`. Ne la partagez jamais.
-- Sous Linux, si `host.docker.internal` n'est pas résolu, utilisez l'adresse IP de votre machine sur le réseau Docker (souvent `172.17.0.1`).
+- `ANTHROPIC_API_KEY` is only needed for the **Assistant** (currently shown as "under maintenance" in the interface, but the back end is ready). Open `supabase/functions/.env` in your editor to paste it after the `=`, then restart `functions serve`. Never share it.
+- On Linux, if `host.docker.internal` does not resolve, use your machine's IP address on the Docker network (often `172.17.0.1`).
 
-**Vérification** (terminal A) :
+**Check** (terminal A):
 
 ```bash
 curl -i -X POST http://127.0.0.1:54321/functions/v1/predict-exam -H "Content-Type: application/json" -d "{}"
 ```
 
-(Sous PowerShell : `curl.exe` au lieu de `curl`.) La réponse attendue est **401 Unauthorized** : la fonction est joignable et refuse les appels non authentifiés.
+(In PowerShell: `curl.exe` instead of `curl`.) The expected response is **401 Unauthorized**: the function is reachable and rejects unauthenticated calls.
 
-### Étape 4 — Frontend *(terminal D)*
+### Step 4 — Frontend *(terminal D)*
 
 **Windows (PowerShell)**
 
@@ -183,7 +185,7 @@ curl -i -X POST http://127.0.0.1:54321/functions/v1/predict-exam -H "Content-Typ
 cd web
 @"
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=COLLEZ_ICI_LA_CLE_PUBLISHABLE
+NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_THE_PUBLISHABLE_KEY_HERE
 "@ | Out-File -Encoding ascii .env.local
 ```
 
@@ -194,128 +196,135 @@ cd web
 cp .env.local.example .env.local
 ```
 
-Puis éditez `web/.env.local` : l'URL doit être `http://127.0.0.1:54321` et la clé, la valeur **Publishable** de l'étape 1. Pas de `<` `>`, pas de guillemets, pas d'espace autour du `=`.
+Then edit `web/.env.local`: the URL must be `http://127.0.0.1:54321` and the key must be the **Publishable** value from step 1. No `<` `>`, no quotes, no spaces around the `=`.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Ouvrez http://localhost:3000. Le bouton lune/soleil bascule entre mode clair et mode sombre.
+Open http://localhost:3000. The **FR/EN** button switches the language and the moon/sun button switches between light and dark mode; both choices are remembered.
 
-> Les variables de `.env.local` ne sont lues qu'au démarrage : après toute modification, arrêtez (`Ctrl+C`) et relancez `npm run dev`.
+> The variables in `.env.local` are only read at startup: after any change, stop (`Ctrl+C`) and restart `npm run dev`.
 
 ---
 
-## Comptes : administrateur et médecins
+## Accounts: administrator and physicians
 
-PreScan distingue deux rôles :
+PreScan has two roles:
 
-| Rôle | Peut faire | Ne peut pas |
+| Role | Can | Cannot |
 |---|---|---|
-| **Médecin** (`doctor`) | créer des patients, analyser des images, valider les résultats, utiliser l'assistant | voir les patients d'un autre médecin |
-| **Administrateur** (`admin`) | valider les comptes, gérer les modèles, indexer les documents de l'assistant, lire le journal d'audit | **accéder aux patients, images et résultats** (volontaire : moindre privilège) |
+| **Physician** (`doctor`) | create patients, analyse images, validate results, review past analyses, export a result for a colleague | see another physician's patients |
+| **Administrator** (`admin`) | approve accounts, manage models, index assistant documents, read the audit log | **access patients, images and results** (deliberate: least privilege) |
 
-Conséquences :
+Consequences:
 
-- Tout compte créé via le formulaire est un **médecin non approuvé** : il voit « Compte en attente de validation » tant qu'un administrateur ne l'a pas approuvé.
-- Le rôle `admin` ne peut **jamais** être choisi depuis l'interface ni via l'inscription : il s'attribue uniquement en base de données, par quelqu'un qui a accès à la base.
-- Un administrateur ne peut pas tester les analyses : prévoyez **deux comptes** (un administrateur, un médecin), avec deux adresses e-mail différentes.
+- Every account created through the form is an **unapproved physician**: it sees "Account awaiting validation" until an administrator approves it.
+- The `admin` role can **never** be chosen from the interface or at sign-up: it is only granted in the database, by someone with database access.
+- An administrator cannot test analyses: plan for **two accounts** (one administrator, one physician) with two different email addresses.
+- Every user (physician or administrator) has a **My profile** page (menu on the top right) to edit personal information and change the profile photo, stored in a private Supabase Storage bucket.
 
-### Créer le premier administrateur
+### Creating the first administrator
 
-1. Dans l'application, ouvrez **Demander un accès** et créez un compte avec l'e-mail de l'administrateur (mot de passe de 10 caractères minimum).
-2. Si un message de confirmation est demandé, ouvrez Mailpit (http://127.0.0.1:54324) et cliquez sur le lien.
-3. Dans Studio (http://127.0.0.1:54323) → **SQL Editor**, exécutez en remplaçant l'e-mail :
+1. In the app, open **Request access** and create an account with the administrator's email (password of at least 10 characters).
+2. If an email confirmation is requested, open Mailpit (http://127.0.0.1:54324) and click the link.
+3. In Studio (http://127.0.0.1:54323) → **SQL Editor**, run the following, replacing the email:
 
 ```sql
 update public.profiles
 set role = 'admin', approved = true
-where id = (select id from auth.users where email = 'admin@exemple.org');
+where id = (select id from auth.users where email = 'admin@example.org');
 ```
 
-4. Déconnectez-vous puis reconnectez-vous avec ce compte.
+4. Sign out, then sign in again with that account.
 
-### Valider un médecin
+### Approving a physician
 
-Chaque médecin s'inscrit lui-même via **Demander un accès**. Connectez-vous ensuite avec le compte **administrateur** : vous arrivez sur la page **Administration**.
+Each physician signs up on their own through **Request access**. Then sign in with the **administrator** account: you land on the **Administration** page.
 
-1. Onglet **Comptes** : les demandes apparaissent sous « En attente de validation ».
-2. Cliquez sur **Approuver**. Le médecin peut alors se connecter et utiliser PreScan.
-3. **Retirer l'accès** suspend un médecin à tout moment ; son compte et ses données restent en base.
+1. **Accounts** tab: requests appear under "Awaiting validation".
+2. Click **Approve**. The physician can now sign in and use PreScan.
+3. **Remove access** suspends a physician at any time; their account and data remain in the database.
 
-Les administrateurs sont redirigés vers `/admin`, les médecins vers `/dashboard`. Chaque approbation ou retrait est inscrit dans l'onglet **Journal d'audit**.
+Administrators are redirected to `/admin`, physicians to `/dashboard`. Every approval or removal is recorded in the **Audit log** tab.
 
-La page Administration propose quatre onglets :
+The Administration page has four tabs:
 
-| Onglet | Fonction |
+| Tab | Function |
 |---|---|
-| Comptes | approuver / retirer l'accès des médecins |
-| Modèles | enregistrer une version, **activer** celle utilisée pour les nouvelles analyses |
-| Documents de l'assistant | indexer (fichier `.md` / `.txt` ou texte collé), activer, désactiver, supprimer |
-| Journal d'audit | 200 derniers événements, filtrables, en lecture seule |
+| Accounts | approve / remove physicians' access |
+| Models | register a version, **activate** the one used for new analyses |
+| Assistant documents | index (`.md` / `.txt` file or pasted text), enable, disable, delete |
+| Audit log | last 200 events, filterable, read-only |
 
-*Secours en SQL* (Studio → SQL Editor), si la page n'est pas accessible :
+*SQL fallback* (Studio → SQL Editor), if the page is not reachable:
 
 ```sql
 select p.id, p.email, p.full_name, p.hospital from public.profiles p where not p.approved;
 
 update public.profiles set approved = true
-where id = (select id from auth.users where email = 'docteur@exemple.org');
+where id = (select id from auth.users where email = 'doctor@example.org');
 ```
 
 ---
 
-## Tester une analyse
+## Trying an analysis
 
-1. Connectez-vous avec le compte **médecin approuvé**.
-2. **Patients** → créez un patient. Un code `PS-XXXXXXXX` est généré ; ne saisissez aucune donnée identifiante (nom, date de naissance, n° de dossier).
-3. **Nouvelle analyse** → choisissez le patient, déposez une image PNG ou JPEG (64 px minimum par côté, 10 Mo maximum), puis **Analyser l'image**.
-4. Vous obtenez la classe principale, la confiance, les trois alternatives et les 16 probabilités, avec un **bandeau rouge « Modèle factice »** (normal tant que les vrais poids ne sont pas installés).
-5. **Confirmer** ou **Corriger** : la décision est enregistrée avec la date et le médecin. Vérifiez dans Studio → *Table Editor* → `predictions`.
+1. Sign in with the **approved physician** account.
+2. **Patients** → create a patient. A `PS-XXXXXXXX` code is generated; do not enter any identifying data (name, date of birth, file number).
+3. **New analysis** → choose the patient, drop a PNG or JPEG image (64 px minimum per side, 10 MB maximum), then **Analyse image**.
+4. You get the main class, the confidence, the three alternatives and the 16 probabilities, with a **red "Dummy model" banner** (normal until the real weights are installed).
+5. **Confirm** or **Correct**: the decision is recorded with the date and the physician. Check in Studio → *Table Editor* → `predictions`.
+
+### Reviewing past analyses and second opinions
+
+- **Analyses** (menu) lists all your analyses. **Click any row** to open the full result: image, main class, alternatives, the 16 probabilities and the validation panel.
+- On an analysis page, **Share for a second opinion** exports a *pseudonymised* case file (`.json`, with the image embedded) or a printable/PDF version. No patient identity is included, and each export is written to the audit log.
+- A colleague opens **Analyses → Import a file** to examine the case read-only, records whether they agree or disagree (and optionally a proposed class and a comment), and exports the file back with their opinion added.
 
 ---
 
-## Alimenter l'assistant (chat RAG)
+## Feeding the assistant (RAG chat)
 
-L'assistant répond uniquement à partir de documents indexés par un administrateur, et affiche ses sources. Prérequis : la clé `ANTHROPIC_API_KEY` renseignée (étape 3) et un compte **administrateur**.
+The assistant only answers from documents indexed by an administrator, and shows its sources. In the interface it is the floating **Assistant** button at the bottom right; it currently opens a "under maintenance" notice while the feature is being finalised, but the Edge Functions (`rag-ingest`, `rag-chat`) are fully functional. Prerequisites for using the back end: `ANTHROPIC_API_KEY` set (step 3) and an **administrator** account.
 
-**Méthode simple (interface).** Compte administrateur → **Administration** → onglet **Documents de l'assistant** → choisissez `supabase/seed/rag/01-fonctionnement-prescan.md` (puis `02-limites-du-modele.md`) → **Indexer le document**.
+**Simple method (interface).** Administrator account → **Administration** → **Assistant documents** tab → choose `supabase/seed/rag/01-fonctionnement-prescan.md` (then `02-limites-du-modele.md`) → **Index document**.
 
-**Alternative en ligne de commande :**
+**Command-line alternative:**
 
-**Windows (PowerShell)** — à la racine du projet :
+**Windows (PowerShell)** — from the project root:
 
 ```powershell
 $url  = "http://127.0.0.1:54321"
-$anon = "COLLEZ_ICI_LA_CLE_PUBLISHABLE"
+$anon = "PASTE_THE_PUBLISHABLE_KEY_HERE"
 
-# 1. Obtenir le jeton de l'administrateur
+# 1. Get the administrator's token
 $login = Invoke-RestMethod -Method Post -Uri "$url/auth/v1/token?grant_type=password" `
   -Headers @{ apikey = $anon } -ContentType "application/json" `
-  -Body (@{ email = "admin@exemple.org"; password = "VOTRE_MOT_DE_PASSE" } | ConvertTo-Json)
+  -Body (@{ email = "admin@example.org"; password = "YOUR_PASSWORD" } | ConvertTo-Json)
 $jwt = $login.access_token
 
-# 2. Indexer un document
+# 2. Index a document
 $content = Get-Content supabase\seed\rag\01-fonctionnement-prescan.md -Raw -Encoding UTF8
-$json = @{ title = "Fonctionnement de PreScan"; content = $content } | ConvertTo-Json
+$json = @{ title = "How PreScan works"; content = $content } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$url/functions/v1/rag-ingest" `
   -Headers @{ Authorization = "Bearer $jwt"; apikey = $anon } `
   -ContentType "application/json; charset=utf-8" `
   -Body ([System.Text.Encoding]::UTF8.GetBytes($json))
 ```
 
-Répétez l'étape 2 avec `02-limites-du-modele.md`. La réponse contient `document_id` et le nombre de passages (`chunks`).
+Repeat step 2 with `02-limites-du-modele.md`. The response contains `document_id` and the number of passages (`chunks`).
 
-**macOS / Linux (bash, avec `jq` et `curl`)**
+**macOS / Linux (bash, with `jq` and `curl`)**
 
 ```bash
 URL=http://127.0.0.1:54321
-ANON=COLLEZ_ICI_LA_CLE_PUBLISHABLE
+ANON=PASTE_THE_PUBLISHABLE_KEY_HERE
 
 JWT=$(curl -s -X POST "$URL/auth/v1/token?grant_type=password" \
   -H "apikey: $ANON" -H "Content-Type: application/json" \
-  -d '{"email":"admin@exemple.org","password":"VOTRE_MOT_DE_PASSE"}' | jq -r .access_token)
+  -d '{"email":"admin@example.org","password":"YOUR_PASSWORD"}' | jq -r .access_token)
 
 for f in supabase/seed/rag/*.md; do
   curl -s -X POST "$URL/functions/v1/rag-ingest" \
@@ -324,76 +333,75 @@ for f in supabase/seed/rag/*.md; do
 done
 ```
 
-Ouvrez ensuite la page **Assistant** (compte médecin) et posez par exemple : « Quelles sont les limites du modèle ? ». La réponse s'affiche en continu, avec des citations `[1]` `[2]` cliquables et la liste des sources.
-
-> L'assistant refuse tout diagnostic et n'interprète aucune image.
+> The assistant refuses to give any diagnosis and does not interpret any image.
 
 ---
 
-## Mettre à jour après un `git pull`
+## Updating after a `git pull`
 
 ```bash
-cd web && npm install                       # nouvelles dépendances éventuelles
+cd web && npm install                       # possible new dependencies
 cd ../inference-api && pip install -r requirements-dev.txt
-cd .. && npx supabase migration up          # applique les NOUVELLES migrations sans effacer les données
+cd .. && npx supabase migration up          # applies the NEW migrations without erasing data
 ```
 
-Relancez ensuite les terminaux B, C et D. N'utilisez pas `db reset` pour cela : il efface les données locales.
+Then restart terminals B, C and D. Do not use `db reset` for this: it erases local data.
 
 ---
 
-## Arrêter et réinitialiser
+## Stopping and resetting
 
-| Action | Commande |
+| Action | Command |
 |---|---|
-| Arrêter l'API, les fonctions, le frontend | `Ctrl+C` dans les terminaux B, C et D |
-| Arrêter Supabase (en gardant les données) | `npx supabase stop` |
-| Tout remettre à zéro (efface les données locales) | `npx supabase db reset` |
+| Stop the API, functions, frontend | `Ctrl+C` in terminals B, C and D |
+| Stop Supabase (keeping data) | `npx supabase stop` |
+| Reset everything (erases local data) | `npx supabase db reset` |
 
-Au redémarrage suivant, relancez simplement : `npx supabase start`, puis les terminaux B (activez d'abord `.venv`), C et D. Les fichiers `.env` sont conservés.
+At the next start, simply run: `npx supabase start`, then terminals B (activate `.venv` first), C and D. The `.env` files are kept.
 
 ---
 
-## Dépannage
+## Troubleshooting
 
-| Symptôme | Cause probable et solution |
+| Symptom | Likely cause and fix |
 |---|---|
-| `supabase start` échoue / « Cannot connect to the Docker daemon » | Docker Desktop n'est pas démarré. Lancez-le, attendez qu'il soit prêt (`docker info`), puis relancez. |
-| Avertissement « Analytics on Windows requires Docker daemon exposed… » | Sans importance : la fonction Analytics n'est pas utilisée. |
-| `python` introuvable | Sous Windows essayez `py` ; sinon installez Python et cochez « Add to PATH ». |
-| PowerShell : « l'exécution de scripts est désactivée » | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, puis relancez l'activation. |
-| `copy : Cannot find path '…\.env.local.example'` | Vous n'êtes pas dans `web/`. Faites `cd web` (le prompt doit se terminer par `\web>`). |
-| `Invalid supabaseUrl: Provided URL is malformed` | `web/.env.local` est absent, contient encore l'exemple, ou n'a pas été relu. Vérifiez qu'il contient `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`, puis relancez `npm run dev`. |
-| « Seuls les comptes médecin approuvés peuvent créer des patients » | Vous êtes connecté avec un compte **administrateur** (aucun accès aux patients, par conception). Utilisez un second compte, approuvé comme médecin. |
-| Après connexion : « Compte en attente de validation » | Le compte n'est pas approuvé. Voir « Valider un médecin ». |
-| Erreur de téléversement / « examen non créé » | Compte non approuvé, ou connecté avec un autre compte que celui approuvé. |
-| Analyse : « modèle indisponible » | (1) l'API (terminal B) tourne-t-elle avec `--host 0.0.0.0` ? (2) le jeton de `supabase/functions/.env` est-il identique à celui de `inference-api/.env` ? Si vous modifiez l'un, relancez l'API **et** `functions serve`. |
-| Edge Function : « Invalid JWT » avant même d'atteindre le code | Dans `supabase/config.toml`, passez `verify_jwt` à `false` pour les trois fonctions (le code vérifie lui-même la session), puis relancez `functions serve`. |
-| Assistant : « momentanément indisponible » | `ANTHROPIC_API_KEY` vide ou invalide dans `supabase/functions/.env`. |
-| Assistant : « aucune information pertinente » | Aucun document n'est indexé : voir « Alimenter l'assistant ». |
-| Port déjà utilisé (8000, 3000) | Changez le port (`--port 8001`, `npm run dev -- -p 3001`) et adaptez `INFERENCE_API_URL` si besoin. |
+| `supabase start` fails / "Cannot connect to the Docker daemon" | Docker Desktop is not running. Start it, wait until it is ready (`docker info`), then retry. |
+| Warning "Analytics on Windows requires Docker daemon exposed…" | Harmless: the Analytics feature is not used. |
+| `python` not found | On Windows try `py`; otherwise install Python and tick "Add to PATH". |
+| PowerShell: "running scripts is disabled" | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then run the activation again. |
+| `copy : Cannot find path '…\.env.local.example'` | You are not in `web/`. Run `cd web` (the prompt should end with `\web>`). |
+| `Invalid supabaseUrl: Provided URL is malformed` | `web/.env.local` is missing, still contains the example, or was not re-read. Check it contains `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`, then restart `npm run dev`. |
+| "Only approved physician accounts can create patients" | You are signed in with an **administrator** account (no access to patients, by design). Use a second account approved as a physician. |
+| After sign-in: "Account awaiting validation" | The account is not approved. See "Approving a physician". |
+| Upload error / "exam not created" | Account not approved, or signed in with a different account than the approved one. |
+| Analysis: "model unavailable" | (1) is the API (terminal B) running with `--host 0.0.0.0`? (2) is the token in `supabase/functions/.env` identical to the one in `inference-api/.env`? If you change one, restart the API **and** `functions serve`. |
+| Edge Function: "Invalid JWT" before even reaching the code | In `supabase/config.toml`, set `verify_jwt` to `false` for the three functions (the code checks the session itself), then restart `functions serve`. |
+| Profile photo upload fails | The `avatars` bucket comes from the latest migration: run `npx supabase migration up`. |
+| Assistant: "temporarily unavailable" | `ANTHROPIC_API_KEY` empty or invalid in `supabase/functions/.env`. |
+| Assistant: "no relevant information" | No document is indexed: see "Feeding the assistant". |
+| Port already in use (8000, 3000) | Change the port (`--port 8001`, `npm run dev -- -p 3001`) and adapt `INFERENCE_API_URL` if needed. |
 
 ---
 
-## Brancher le vrai modèle
+## Plugging in the real model
 
-1. Déposez les poids dans `inference-api/app/models/densenet121_v1.pt` (ils ne sont jamais versionnés dans git).
-2. Dans `inference-api/configs/densenet121-v1.yaml`, remplacez `class_names` par vos 16 classes **dans l'ordre exact de l'entraînement**, et reportez le prétraitement utilisé à l'entraînement (taille, couleur, moyenne, écart-type).
-3. Mettez à jour les 16 lignes de `abnormality_classes` (migration `…_schema.sql`, puis `npx supabase db reset`) avec les mêmes `class_key`.
-4. `pip install -r requirements-ml.txt`, puis `PRESCAN_ALLOW_DUMMY_MODEL=false` dans `inference-api/.env`.
+1. Put the weights in `inference-api/app/models/densenet121_v1.pt` (they are never versioned in git).
+2. In `inference-api/configs/densenet121-v1.yaml`, replace `class_names` with your 16 classes **in the exact training order**, and copy the preprocessing used at training time (size, colour, mean, standard deviation).
+3. Update the 16 rows of `abnormality_classes` (migration `…_schema.sql`, then `npx supabase db reset`) with the same `class_key` values.
+4. `pip install -r requirements-ml.txt`, then set `PRESCAN_ALLOW_DUMMY_MODEL=false` in `inference-api/.env`.
 
-Détails et variante « ensemble » : `docs/ARCHITECTURE.md`.
+Details and the "ensemble" variant: `docs/ARCHITECTURE.md`.
 
 ---
 
-## Sécurité en bref
+## Security at a glance
 
-RLS sur toutes les tables · bucket d'images privé · aucun secret côté navigateur · jeton de service entre Edge Function et FastAPI · résultats du modèle immuables · journal d'audit · patients pseudonymisés (code généré, aucun nom de fichier conservé) · le chat refuse tout diagnostic.
+RLS on every table · private image bucket · no secret in the browser · service token between Edge Function and FastAPI · immutable model results · audit log (including exports) · pseudonymised patients (generated code, no original file name kept, no identity in exported case files) · the chat refuses any diagnosis.
 
-Les fichiers `.env`, `.env.local` et `supabase/functions/.env` sont ignorés par git : ne les commitez jamais.
+The `.env`, `.env.local` and `supabase/functions/.env` files are ignored by git: never commit them.
 
-PreScan n'est **pas** un dispositif de diagnostic. Avant tout usage clinique : validation du modèle, conformité réglementaire et protection des données de santé selon votre pays.
+PreScan is **not** a diagnostic device. Before any clinical use: model validation, regulatory compliance and health-data protection according to your country.
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md` : architecture, flux, endpoints, gestion des erreurs, plan de déploiement (Vercel, Supabase, Render/Railway) et feuille de route.
+- `docs/ARCHITECTURE.md`: architecture, flows, endpoints, error handling, deployment plan (Vercel, Supabase, Render/Railway) and roadmap.
