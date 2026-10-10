@@ -78,7 +78,10 @@ export default async function DashboardPage() {
       </dl>
 
       <section aria-labelledby="latest">
-        <h2 id="latest" className="mb-3 text-lg font-semibold">{t("dash.latest")}</h2>
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <h2 id="latest" className="text-lg font-semibold">{t("dash.latest")}</h2>
+          <Link href="/analyses" className="text-sm font-medium text-primary hover:underline">{t("dash.viewAll")}</Link>
+        </div>
         {rows.length === 0 ? (
           <div className="card p-8 text-center">
             <p className="text-muted">{t("dash.none")}</p>
@@ -87,7 +90,8 @@ export default async function DashboardPage() {
         ) : (
           <ul className="card divide-y divide-border">
             {rows.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <li key={r.id}>
+              <Link href={`/analyses/${r.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-border/30">
                 <div>
                   <p className="font-medium">
                     {labels[r.predicted_class] ?? r.predicted_class}
@@ -104,7 +108,8 @@ export default async function DashboardPage() {
                   {r.low_confidence && <span className="rounded-full border border-warn/60 px-2 py-0.5 text-warn">{t("dash.low")}</span>}
                   <span className="rounded-full border border-border px-2 py-0.5 text-muted">{t(`status.${r.validation_status}` as const)}</span>
                 </div>
-              </li>
+              </Link>
+            </li>
             ))}
           </ul>
         )}

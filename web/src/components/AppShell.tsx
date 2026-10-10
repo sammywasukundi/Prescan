@@ -32,12 +32,15 @@ export function AppShell({ fullName, role, avatarUrl, children }: { fullName: st
       <a href="#contenu" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-fg">
         {t("common.skipToContent")}
       </a>
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-40 print:hidden border-b border-border bg-bg/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <Logo href={role === "admin" ? "/admin" : "/dashboard"} />
           <nav aria-label={t("common.mainNav")} className="order-3 flex w-full gap-1 overflow-x-auto md:order-none md:w-auto md:flex-1">
             {NAV.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              // L'entrée la plus spécifique l'emporte (/analyses/new ne doit pas aussi activer /analyses).
+              const matches = NAV.filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
+              const best = matches.sort((x, y) => y.href.length - x.href.length)[0];
+              const active = best?.href === item.href;
               return (
                 <Link
                   key={item.href}

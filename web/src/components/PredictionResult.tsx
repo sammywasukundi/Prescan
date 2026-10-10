@@ -15,9 +15,10 @@ interface Props {
   classes: ClassInfo[];
   labels: Record<string, string>;
   onValidated: (p: Prediction) => void;
+  readOnly?: boolean;
 }
 
-export function PredictionResult({ prediction, previewUrl, classes, labels, onValidated }: Props) {
+export function PredictionResult({ prediction, previewUrl, classes, labels, onValidated, readOnly }: Props) {
   const { t } = useI18n();
   const ranked = Object.entries(prediction.probabilities).sort((a, b) => b[1] - a[1]);
   const alternatives = ranked.filter(([key]) => key !== prediction.predicted_class).slice(0, 3);
@@ -88,7 +89,7 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
         <ProbabilityBars probabilities={prediction.probabilities} labels={labels} highlight={prediction.predicted_class} />
       </section>
 
-      <ValidationPanel prediction={prediction} classes={classes} labels={labels} onValidated={onValidated} />
+      <ValidationPanel prediction={prediction} classes={classes} labels={labels} onValidated={onValidated} readOnly={readOnly} />
       <MedicalDisclaimer />
     </div>
   );

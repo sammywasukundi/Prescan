@@ -36,7 +36,7 @@ export function AssistantFab() {
         ref={fabRef}
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg shadow-lg shadow-primary/30 hover:bg-primary/90"
+        className="fixed bottom-5 right-5 z-40 flex print:hidden h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg shadow-lg shadow-primary/30 hover:bg-primary/90"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         whileHover={{ scale: 1.05 }}

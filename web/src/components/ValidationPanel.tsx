@@ -13,9 +13,11 @@ interface Props {
   classes: ClassInfo[];
   labels: Record<string, string>;
   onValidated: (p: Prediction) => void;
+  /** Lecture seule : n'affiche que la validation déjà faite (dossier importé). */
+  readOnly?: boolean;
 }
 
-export function ValidationPanel({ prediction, classes, labels, onValidated }: Props) {
+export function ValidationPanel({ prediction, classes, labels, onValidated, readOnly }: Props) {
   const { t, locale } = useI18n();
   const [correcting, setCorrecting] = useState(false);
   const [correctedClass, setCorrectedClass] = useState("");
@@ -68,8 +70,10 @@ export function ValidationPanel({ prediction, classes, labels, onValidated }: Pr
     );
   }
 
+  if (readOnly) return null;
+
   return (
-    <div className="card space-y-4 p-4">
+    <div className="card space-y-4 p-4 print:hidden">
       <div>
         <h3 className="font-semibold">{t("val.title")}</h3>
         <p className="text-sm text-muted">{t("val.help")}</p>
