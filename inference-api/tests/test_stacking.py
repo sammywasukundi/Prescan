@@ -80,3 +80,62 @@ def test_missing_weights_refused_when_dummy_disabled(tmp_path):
     settings = get_settings().model_copy(update={"models_dir": tmp_path, "allow_dummy_model": False})
     with pytest.raises(ModelUnavailable):
         ModelRegistry(settings).get("stacking-v1")
+
+
+# ── Garde-fous : image hors sujet et désaccord entre réseaux ─────────────────────────────────────
+def _colored_png(color):
+    import io
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (160, 120), color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_colorful_photo_is_rejected(client, auth):
+    r = client.post(
+        "/predict", headers=auth, data={"exam_id": "7d1c3a8e-5c1f-4b0e-9d6a-2f3b8c9e1a42"},
+        files={"image": ("u", _colored_png((220, 40, 30)), "image/png")},
+    )
+    assert r.status_code == 422 and r.json()["error"]["code"] == "not_ultrasound"
+
+
+def test_gray_and_small_doppler_overlay_are_accepted():
+    import io
+    from PIL import Image
+    from app.services.model_config import PreprocessingConfig
+    from app.services.preprocessing import colorful_fraction, preprocess_image
+
+    img = Image.new("RGB", (200, 200), (120, 120, 120))
+    assert colorful_fraction(img, 40) == 0
+    img.paste((255, 0, 0), (0, 0, 50, 50))  # zone Doppler : ~6 % de l'image
+    buf = io.BytesIO(); img.save(buf, format="PNG")
+    assert 0 < colorful_fraction(img, 40) < 0.1
+    preprocess_image(buf.getvalue(), PreprocessingConfig(), 10_000_000)  # ne lève pas
+
+
+def test_disagreement_between_networks_flags_review(monkeypatch):
+    from app.services import inference
+    from app.services.model_registry import LoadedModel, ModelAdapter
+
+    class Fake(ModelAdapter):
+        def predict_proba(self, batch):
+            return self.predict_details(batch)[0]
+
+        def predict_details(self, batch):
+            hi = np.zeros((1, 16)); hi[0, 12] = 1.0     # normal
+            other = np.zeros((1, 16)); other[0, 10] = 1.0
+            final = np.zeros((1, 16)); final[0, 12] = 0.95; final[0, 10] = 0.05
+            return final, {"A": hi, "B": other, "C": hi}
+
+    import yaml
+    cfg = ModelConfig.model_validate(yaml.safe_load((CONFIGS / "stacking-v1.yaml").read_text(encoding="utf-8")))
+
+    class Reg:
+        def get(self, _):
+            return LoadedModel(cfg, Fake())
+
+    out = inference.run_inference(make_image(), "stacking-v1", Reg(), 10_000_000)
+    assert out["confidence"] >= 0.9                    # confiance élevée…
+    assert out["members_agree"] is False and out["low_confidence"] is True   # …mais désaccord signalé
+    assert out["member_votes"]["B"] == "mild_ventriculomegaly"

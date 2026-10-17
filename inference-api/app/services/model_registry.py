@@ -30,6 +30,10 @@ class ModelAdapter(ABC):
     def predict_proba(self, batch: np.ndarray) -> np.ndarray:
         """batch (N, 3, H, W) float32 → probabilités (N, num_classes), lignes de somme 1."""
 
+    def predict_details(self, batch: np.ndarray) -> tuple[np.ndarray, dict[str, np.ndarray] | None]:
+        """Probabilités finales + (si le modèle est un ensemble) les probabilités de chaque membre."""
+        return self.predict_proba(batch), None
+
 
 class DummyAdapter(ModelAdapter):
     """Modèle factice DÉTERMINISTE pour le développement : jamais à interpréter cliniquement."""
@@ -129,6 +133,7 @@ class KerasStackingAdapter(ModelAdapter):
 
         self._num_classes = cfg.num_classes
         self._networks = []
+        self._names = [m.name for m in cfg.keras_members]
         try:
             for member in cfg.keras_members:
                 path = models_dir / member.file
@@ -141,16 +146,19 @@ class KerasStackingAdapter(ModelAdapter):
             logger.exception("Chargement du modèle de stacking impossible")
             raise ModelUnavailable("Les poids du modèle n'ont pas pu être chargés.") from exc
 
-    def predict_proba(self, batch: np.ndarray) -> np.ndarray:
+    def predict_details(self, batch: np.ndarray) -> tuple[np.ndarray, dict[str, np.ndarray]]:
         # Le prétraitement commun produit (N, 3, H, W) ; Keras attend (N, H, W, 3).
         x = np.ascontiguousarray(batch.transpose(0, 2, 3, 1), dtype=np.float32)
-        outputs = []
-        for net in self._networks:
+        outputs: dict[str, np.ndarray] = {}
+        for name, net in zip(self._names, self._networks):
             out = np.asarray(net(x, training=False), dtype=np.float64)
             if out.shape != (x.shape[0], self._num_classes):
                 raise ModelUnavailable("La sortie d'un réseau est incohérente.")
-            outputs.append(out)
-        return self._meta.predict_proba(np.concatenate(outputs, axis=1))
+            outputs[name] = out
+        return self._meta.predict_proba(np.concatenate(list(outputs.values()), axis=1)), outputs
+
+    def predict_proba(self, batch: np.ndarray) -> np.ndarray:
+        return self.predict_details(batch)[0]
 
 
 class EnsembleAdapter(ModelAdapter):

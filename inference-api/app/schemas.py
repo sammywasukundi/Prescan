@@ -18,6 +18,9 @@ class PredictionResponse(BaseModel):
     top3: list[ClassScore]
     low_confidence: bool
     low_confidence_threshold: float
+    # Ensembles : les réseaux sont-ils d'accord ? Sinon `low_confidence` est vrai (à vérifier).
+    members_agree: bool | None = None
+    member_votes: dict[str, str] | None = None
     is_dummy: bool
     processing_time_ms: int
     disclaimer: str = DISCLAIMER

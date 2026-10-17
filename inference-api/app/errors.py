@@ -29,6 +29,12 @@ class UnreadableImage(InferenceError):
     default_message = "L'image est illisible ou corrompue."
 
 
+class NotAnUltrasound(InferenceError):
+    status_code = 422
+    code = "not_ultrasound"
+    default_message = "Cette image ne ressemble pas à une échographie (image trop colorée)."
+
+
 class ImageTooLarge(InferenceError):
     status_code = 413
     code = "image_too_large"

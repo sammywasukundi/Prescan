@@ -19,6 +19,7 @@ const INFERENCE_ERRORS: Record<string, [number, string]> = {
   image_too_large: [413, "L'image dépasse la taille maximale autorisée (10 Mo)."],
   unsupported_format: [415, "Format non pris en charge : utilisez une image PNG ou JPEG."],
   unreadable_image: [422, "L'image est illisible ou trop petite. Essayez un autre fichier."],
+  not_ultrasound: [422, "Cette image ne ressemble pas à une échographie. Téléversez une image d'échographie cérébrale fœtale."],
   unknown_model_version: [503, "La version du modèle demandée n'est pas disponible."],
   model_unavailable: [503, "Le modèle d'analyse est momentanément indisponible. Réessayez dans quelques instants."],
 };

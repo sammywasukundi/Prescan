@@ -10,7 +10,7 @@ export function predictErrorKey(code: string): MessageKey {
 }
 
 const KNOWN = [
-  "unsupported_format", "image_too_large", "empty_file", "unreadable_image", "upload_failed", "exam_create_failed",
+  "unsupported_format", "image_too_large", "empty_file", "unreadable_image", "not_ultrasound", "upload_failed", "exam_create_failed",
   "model_unavailable", "inference_timeout", "already_processing", "already_completed", "not_approved",
   "unauthenticated", "network_error", "prediction_save_failed", "unknown",
 ] as const;

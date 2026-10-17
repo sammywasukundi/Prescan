@@ -111,6 +111,8 @@ Page `/admin` (rôle `admin` uniquement, redirection sinon) : comptes, modèles,
 | Situation | Détection | Comportement |
 |---|---|---|
 | Fichier vide / mauvais format / trop gros | navigateur, Edge Function, FastAPI | message précis avant tout envoi quand c'est possible |
+| Image hors sujet (photo, capture d'écran très colorée) | FastAPI (`max_color_fraction`, `chroma_threshold`) | `not_ultrasound` (422), examen `failed`. Le Doppler couleur (petite zone) reste accepté ; une photo en niveaux de gris n'est pas détectée |
+| Les réseaux de l'ensemble ne s'accordent pas | FastAPI (`members_agree`) | `low_confidence` forcé à vrai : bandeau « à vérifier », même si la probabilité affichée est élevée |
 | Image illisible ou trop petite | navigateur (`createImageBitmap`), PIL | `unreadable_image`, examen `failed`, nouvel essai possible |
 | Modèle indisponible / poids manquants | FastAPI → 503 | `model_unavailable`, bouton « Réessayer » (l'image n'est pas renvoyée) |
 | Timeout d'inférence | Edge Function (`INFERENCE_TIMEOUT_MS`) | `inference_timeout` (504) |

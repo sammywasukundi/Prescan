@@ -19,7 +19,8 @@ def run_inference(raw: bytes, model_version: str, registry: ModelRegistry, max_b
 
     tensor = preprocess_image(raw, cfg.preprocessing, max_bytes)
     try:
-        probs = np.asarray(loaded.adapter.predict_proba(tensor[None, ...])[0], dtype=np.float64)
+        full, members = loaded.adapter.predict_details(tensor[None, ...])
+        probs = np.asarray(full[0], dtype=np.float64)
     except ModelUnavailable:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -34,6 +35,14 @@ def run_inference(raw: bytes, model_version: str, registry: ModelRegistry, max_b
     top = int(order[0])
     low_confidence = bool(probs[top] < cfg.low_confidence_threshold)
 
+    # Désaccord entre les réseaux d'un ensemble : signal d'image atypique, résultat à vérifier.
+    member_votes: dict[str, str] | None = None
+    members_agree: bool | None = None
+    if members:
+        member_votes = {name: cfg.class_names[int(np.argmax(p[0]))] for name, p in members.items()}
+        members_agree = len(set(member_votes.values())) == 1
+        low_confidence = low_confidence or not members_agree
+
     return {
         "model_name": cfg.model_name,
         "model_version": cfg.model_version,
@@ -43,6 +52,8 @@ def run_inference(raw: bytes, model_version: str, registry: ModelRegistry, max_b
         "top3": [{"class_key": cfg.class_names[int(i)], "probability": round(float(probs[i]), 6)} for i in order[:3]],
         "low_confidence": low_confidence,
         "low_confidence_threshold": cfg.low_confidence_threshold,
+        "members_agree": members_agree,
+        "member_votes": member_votes,
         "is_dummy": loaded.adapter.is_dummy,
         "processing_time_ms": int((time.perf_counter() - started) * 1000),
     }

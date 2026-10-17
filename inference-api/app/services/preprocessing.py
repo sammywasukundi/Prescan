@@ -3,13 +3,24 @@ import io
 import numpy as np
 from PIL import Image
 
-from ..errors import ImageTooLarge, UnreadableImage, UnsupportedImageFormat
+from ..errors import ImageTooLarge, NotAnUltrasound, UnreadableImage, UnsupportedImageFormat
 from .model_config import PreprocessingConfig
 
 # Protège contre les « bombes de décompression ».
 Image.MAX_IMAGE_PIXELS = 40_000_000
 
 ALLOWED_FORMATS = {"PNG", "JPEG"}
+
+
+def colorful_fraction(img: Image.Image, chroma_threshold: int) -> float:
+    """Part des pixels dont l'écart entre canaux RGB dépasse le seuil (0 pour une image en gris)."""
+    if img.mode in ("L", "LA", "1", "I", "I;16", "F"):
+        return 0.0
+    small = img.convert("RGB")
+    small.thumbnail((128, 128))
+    arr = np.asarray(small, dtype=np.int16)
+    chroma = arr.max(axis=2) - arr.min(axis=2)
+    return float((chroma > chroma_threshold).mean())
 
 
 def preprocess_image(raw: bytes, cfg: PreprocessingConfig, max_bytes: int) -> np.ndarray:
@@ -34,6 +45,9 @@ def preprocess_image(raw: bytes, cfg: PreprocessingConfig, max_bytes: int) -> np
         raise UnsupportedImageFormat()
     if min(img.size) < cfg.min_input_size:
         raise UnreadableImage(f"L'image est trop petite (minimum {cfg.min_input_size} px par côté).")
+
+    if cfg.max_color_fraction is not None and colorful_fraction(img, cfg.chroma_threshold) > cfg.max_color_fraction:
+        raise NotAnUltrasound()
 
     img = img.convert("L").convert("RGB") if cfg.color_mode == "grayscale_to_rgb" else img.convert("RGB")
 
