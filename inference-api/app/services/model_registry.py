@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import re
 import threading
@@ -85,6 +86,73 @@ class TorchDenseNetAdapter(ModelAdapter):
             return torch.softmax(self._model(x), dim=1).cpu().numpy()
 
 
+class StackingMeta:
+    """Méta-modèle de stacking : régression logistique multinomiale exportée en JSON.
+
+    Reproduit `LogisticRegression.predict_proba` sans dépendre de scikit-learn (le pickle d'origine
+    n'est relisible qu'avec la même version de la bibliothèque). Voir scripts/export_meta_model.py.
+    """
+
+    def __init__(self, path: Path, n_inputs: int, num_classes: int):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.classes = np.asarray(data["classes"], dtype=np.int64)
+        self.coef = np.asarray(data["coef"], dtype=np.float64)           # (n_meta_classes, n_inputs)
+        self.intercept = np.asarray(data["intercept"], dtype=np.float64)  # (n_meta_classes,)
+        if self.coef.ndim != 2 or self.coef.shape[1] != n_inputs:
+            raise ValueError(f"Le méta-modèle attend {self.coef.shape[1]} entrées, {n_inputs} fournies.")
+        if self.coef.shape[0] != len(self.classes) or self.intercept.shape != (len(self.classes),):
+            raise ValueError("Dimensions du méta-modèle incohérentes.")
+        if self.classes.min() < 0 or self.classes.max() >= num_classes:
+            raise ValueError("Indices de classes du méta-modèle hors limites.")
+        self.num_classes = num_classes
+
+    def predict_proba(self, features: np.ndarray) -> np.ndarray:
+        """(N, n_inputs) → (N, num_classes). Les classes absentes de l'entraînement du
+        méta-modèle reçoivent une probabilité nulle."""
+        logits = features @ self.coef.T + self.intercept
+        logits -= logits.max(axis=1, keepdims=True)
+        e = np.exp(logits)
+        p = e / e.sum(axis=1, keepdims=True)
+        full = np.zeros((features.shape[0], self.num_classes), dtype=np.float64)
+        full[:, self.classes] = p
+        return full
+
+
+class KerasStackingAdapter(ModelAdapter):
+    """Plusieurs réseaux Keras (probabilités softmax) combinés par un méta-modèle de stacking."""
+
+    def __init__(self, cfg: ModelConfig, models_dir: Path, configs_dir: Path):
+        try:
+            import keras
+        except ImportError as exc:
+            raise ModelUnavailable("TensorFlow/Keras n'est pas installé (pip install -r requirements-ml.txt).") from exc
+
+        self._num_classes = cfg.num_classes
+        self._networks = []
+        try:
+            for member in cfg.keras_members:
+                path = models_dir / member.file
+                logger.info("Chargement du réseau %s (%s)", member.name, member.file)
+                self._networks.append(keras.models.load_model(path, compile=False))
+            self._meta = StackingMeta(
+                configs_dir / (cfg.meta_file or ""), cfg.num_classes * len(cfg.keras_members), cfg.num_classes
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Chargement du modèle de stacking impossible")
+            raise ModelUnavailable("Les poids du modèle n'ont pas pu être chargés.") from exc
+
+    def predict_proba(self, batch: np.ndarray) -> np.ndarray:
+        # Le prétraitement commun produit (N, 3, H, W) ; Keras attend (N, H, W, 3).
+        x = np.ascontiguousarray(batch.transpose(0, 2, 3, 1), dtype=np.float32)
+        outputs = []
+        for net in self._networks:
+            out = np.asarray(net(x, training=False), dtype=np.float64)
+            if out.shape != (x.shape[0], self._num_classes):
+                raise ModelUnavailable("La sortie d'un réseau est incohérente.")
+            outputs.append(out)
+        return self._meta.predict_proba(np.concatenate(outputs, axis=1))
+
+
 class EnsembleAdapter(ModelAdapter):
     def __init__(self, members: list[ModelAdapter]):
         self._members = members
@@ -139,6 +207,15 @@ class ModelRegistry:
             if any(m.config.class_names != cfg.class_names for m in members):
                 raise ModelUnavailable("Les membres de l'ensemble n'ont pas le même ordre de classes.")
             return EnsembleAdapter([m.adapter for m in members])
+
+        if cfg.kind == "stacking":
+            models_dir = self._settings.models_dir
+            if all((models_dir / m.file).is_file() for m in cfg.keras_members):
+                return KerasStackingAdapter(cfg, models_dir, self._settings.configs_dir)
+            if self._settings.allow_dummy_model:
+                logger.warning("Poids absents (%s) : utilisation du MODÈLE FACTICE.", cfg.model_version)
+                return DummyAdapter(cfg.num_classes)
+            raise ModelUnavailable("Les poids du modèle sont introuvables.")
 
         weights = self._settings.models_dir / (cfg.weights_file or "")
         if weights.is_file():

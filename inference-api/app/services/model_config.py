@@ -12,12 +12,23 @@ class PreprocessingConfig(BaseModel):
     min_input_size: int = 64
 
 
+class KerasMember(BaseModel):
+    """Un réseau Keras d'un ensemble par stacking. L'ORDRE de la liste est celui de l'entraînement
+    du méta-modèle : il détermine l'ordre de concaténation des probabilités."""
+
+    name: str
+    file: str  # fichier .h5 / .keras dans `models_dir`
+
+
 class ModelConfig(BaseModel):
     model_name: str
     model_version: str
-    kind: Literal["single", "ensemble"] = "single"
+    kind: Literal["single", "ensemble", "stacking"] = "single"
     architecture: Literal["densenet121"] = "densenet121"
     weights_file: str | None = None
+    # kind = stacking : réseaux Keras + méta-modèle (régression logistique exportée en JSON).
+    keras_members: list[KerasMember] = Field(default_factory=list)
+    meta_file: str | None = None  # relatif au dossier `configs`
     members: list[str] = Field(default_factory=list)
     aggregation: Literal["mean_probabilities"] = "mean_probabilities"
     num_classes: int = 16
@@ -30,6 +41,15 @@ class ModelConfig(BaseModel):
         if self.kind == "single":
             if not self.weights_file:
                 raise ValueError("`weights_file` est requis pour un modèle simple.")
+            if len(self.class_names) != self.num_classes:
+                raise ValueError(
+                    f"`class_names` contient {len(self.class_names)} entrées, {self.num_classes} attendues."
+                )
+        elif self.kind == "stacking":
+            if len(self.keras_members) < 2:
+                raise ValueError("Un stacking nécessite au moins deux réseaux dans `keras_members`.")
+            if not self.meta_file:
+                raise ValueError("`meta_file` est requis pour un stacking.")
             if len(self.class_names) != self.num_classes:
                 raise ValueError(
                     f"`class_names` contient {len(self.class_names)} entrées, {self.num_classes} attendues."

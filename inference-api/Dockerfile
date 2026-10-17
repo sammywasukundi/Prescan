@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# INSTALL_ML=true installe PyTorch (CPU) pour charger de vrais poids.
+# INSTALL_ML=true installe TensorFlow (CPU) pour charger de vrais poids.
 ARG INSTALL_ML=false
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
@@ -8,7 +8,7 @@ WORKDIR /srv
 COPY requirements.txt requirements-ml.txt ./
 RUN pip install --no-cache-dir -r requirements.txt \
  && if [ "$INSTALL_ML" = "true" ]; then \
-      pip install --no-cache-dir -r requirements-ml.txt --extra-index-url https://download.pytorch.org/whl/cpu; \
+      pip install --no-cache-dir -r requirements-ml.txt; \
     fi
 
 COPY app ./app

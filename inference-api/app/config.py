@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     models_dir: Path = BASE_DIR / "app" / "models"
     configs_dir: Path = BASE_DIR / "configs"
-    default_model_version: str = "densenet121-v1"
+    default_model_version: str = "stacking-v1"
 
     max_image_bytes: int = 10 * 1024 * 1024
     # En production : false. L'API refuse alors de servir un modèle dont les poids sont absents.

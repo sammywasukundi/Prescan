@@ -36,7 +36,7 @@ def test_predict_success_shape(client, auth, png):
     assert r.status_code == 200
     body = r.json()
     assert body["exam_id"] == EXAM_ID
-    assert body["model_version"] == "densenet121-v1"
+    assert body["model_version"] == "stacking-v1"
     assert len(body["probabilities"]) == 16
     assert sum(body["probabilities"].values()) == pytest.approx(1.0, abs=1e-3)
     assert body["predicted_class"] in body["probabilities"]
@@ -93,7 +93,7 @@ def test_unknown_model_version(client, auth, png):
     assert r.status_code == 404 and r.json()["error"]["code"] == "unknown_model_version"
 
 
-@pytest.mark.parametrize("version", ["../../etc/passwd", "..%2f..%2fsecret", "A B", "densenet121-v1/../x"])
+@pytest.mark.parametrize("version", ["../../etc/passwd", "..%2f..%2fsecret", "A B", "stacking-v1/../x"])
 def test_model_version_path_traversal_is_blocked(client, auth, png, version):
     r = post(client, auth, png, model_version=version)
     assert r.status_code == 404 and r.json()["error"]["code"] == "unknown_model_version"

@@ -1,0 +1,51 @@
+# Modèle servi par POST /predict (model_version = « stacking-v1 »).
+# Ensemble par stacking (thèse) : MobileNetV2 + VGG16 + DenseNet121 → régression logistique.
+# Ce fichier DOIT refléter exactement le pipeline utilisé à l'entraînement.
+model_name: Ensemble MobileNetV2 + VGG16 + DenseNet121 (stacking)
+model_version: stacking-v1
+kind: stacking
+num_classes: 16
+
+# Réseaux Keras, dans l'ORDRE de concaténation des probabilités vu par le méta-modèle
+# (celui de `app.py` : MobileNetV2, VGG16, DenseNet121). Fichiers à déposer dans app/models/.
+keras_members:
+  - { name: MobileNetV2, file: mobilenetv2_best.keras }
+  - { name: VGG16,       file: vgg16_best.h5 }
+  - { name: DenseNet121, file: densenet121_best.h5 }
+
+# Méta-modèle exporté par scripts/export_meta_model.py (relatif au dossier configs/).
+meta_file: stacking-v1.meta.json
+
+# ⚠ ORDRE EXACT des sorties des réseaux (index 0 → 15) = colonnes de test/_classes.csv.
+#   Doit correspondre à public.abnormality_classes (migration 20261018000007).
+#   Entre parenthèses : le nom d'origine dans le jeu de données.
+class_names:
+  - arnold_chiari_malformation   # anold-chiari-malformation
+  - arachnoid_cyst               # arachnoid-cyst
+  - cerebellar_hypoplasia        # cerebellah-hypoplasia
+  - colpocephaly                 # colphocephaly
+  - encephalocele                # encephalocele
+  - holoprosencephaly            # holoprosencephaly
+  - hydranencephaly              # hydracenphaly
+  - intracranial_hemorrhage      # intracranial-hemorrdge
+  - intracranial_tumor           # intracranial-tumor        (jamais prédite : absente du méta-modèle)
+  - mega_cisterna_magna          # m-magna
+  - mild_ventriculomegaly        # mild-ventriculomegaly
+  - moderate_ventriculomegaly    # moderate-ventriculomegaly
+  - normal                       # normal
+  - porencephaly                 # polencephaly
+  - severe_ventriculomegaly      # severe-ventriculomegaly
+  - vein_of_galen_malformation   # vein-of-galen              (jamais prédite : absente du méta-modèle)
+
+# Prétraitement de l'entraînement : niveaux de gris → RGB, 224×224, division par 255 (pas de
+# normalisation ImageNet : mean 0 / std 1).
+preprocessing:
+  image_size: [224, 224]
+  color_mode: grayscale_to_rgb
+  rescale: 255.0
+  mean: [0.0, 0.0, 0.0]
+  std: [1.0, 1.0, 1.0]
+  min_input_size: 64
+
+# En dessous de ce seuil de confiance, l'interface affiche une alerte « confiance faible ».
+low_confidence_threshold: 0.6

@@ -1,4 +1,4 @@
-# Dépendances nécessaires uniquement pour charger de vrais poids DenseNet121.
+# Dépendances nécessaires uniquement pour charger les vrais poids Keras de l'ensemble.
 # Sans elles, l'API tourne avec le modèle factice (PRESCAN_ALLOW_DUMMY_MODEL=true).
-torch>=2.3
-torchvision>=0.18
+# Version testée ici ; si le chargement d'un .h5 échoue, alignez-la sur celle de l'entraînement.
+tensorflow-cpu==2.20.0
