@@ -29,3 +29,7 @@ inference-api/app/models/*.onnx
 .DS_Store
 .idea/
 .vscode/
+
+# Poids des modèles Keras : ne jamais versionner
+inference-api/app/models/*.h5
+inference-api/app/models/*.keras

@@ -2,14 +2,14 @@
 
 # PreScan
 
-Plateforme d'aide au dépistage des anomalies cérébrales fœtales à partir d'images d'échographie prénatale, réservée à des médecins authentifiés. Un médecin téléverse une image ; PreScan la fait classer par un modèle (DenseNet121, ensemble possible) parmi 16 catégories, affiche la confiance et les probabilités, et laisse le médecin valider ou corriger.
+Plateforme d'aide au dépistage des anomalies cérébrales fœtales à partir d'images d'échographie prénatale, réservée à des médecins authentifiés. Un médecin téléverse une image ; PreScan la fait classer par un modèle (ensemble MobileNetV2, VGG16 et DenseNet121) parmi 16 catégories, affiche la confiance et les probabilités, et laisse le médecin valider ou corriger.
 
 > Ce résultat est une aide au dépistage et doit être confirmé par un professionnel de santé.
 
 **État actuel : prototype.**
 
 - Le modèle fourni est un **modèle factice** : ses résultats sont aléatoires et signalés comme tels dans l'interface (bandeau rouge).
-- Les 16 classes du schéma sont **provisoires** : remplacez-les par les vôtres (voir `docs/ARCHITECTURE.md`, section « Intégrer le vrai modèle »).
+- Les 16 classes sont celles du modèle entraîné (migration `20261018000007_real_model.sql`) ; tant qu'elle n'est pas appliquée et que les poids ne sont pas déployés, l'API sert un **modèle factice**.
 
 | Dossier | Contenu |
 |---|---|
@@ -379,12 +379,16 @@ Au redémarrage suivant, relancez simplement : `npx supabase start`, puis les te
 
 ## Brancher le vrai modèle
 
-1. Déposez les poids dans `inference-api/app/models/densenet121_v1.pt` (ils ne sont jamais versionnés dans git).
-2. Dans `inference-api/configs/densenet121-v1.yaml`, remplacez `class_names` par vos 16 classes **dans l'ordre exact de l'entraînement**, et reportez le prétraitement utilisé à l'entraînement (taille, couleur, moyenne, écart-type).
-3. Mettez à jour les 16 lignes de `abnormality_classes` (migration `…_schema.sql`, puis `npx supabase db reset`) avec les mêmes `class_key`.
-4. `pip install -r requirements-ml.txt`, puis `PRESCAN_ALLOW_DUMMY_MODEL=false` dans `inference-api/.env`.
+Le modèle entraîné est un **ensemble par stacking** : MobileNetV2 + VGG16 + DenseNet121 (Keras), dont les 3 × 16 probabilités alimentent un méta-modèle de régression logistique (`inference-api/configs/stacking-v1.yaml`).
 
-Détails et variante « ensemble » : `docs/ARCHITECTURE.md`.
+1. Déposez les trois fichiers de poids dans `inference-api/app/models/` : `mobilenetv2_best.keras`, `vgg16_best.h5`, `densenet121_best.h5` (jamais versionnés dans git).
+2. Le méta-modèle est déjà exporté dans `configs/stacking-v1.meta.json` (relancez `scripts/export_meta_model.py` si vous le réentraînez).
+3. Appliquez la migration `20261018000007_real_model.sql` (`npx supabase db push`) : elle remplace les classes provisoires par les 16 vraies (même ordre que la config) et active `stacking-v1`. Les résultats du modèle factice sont supprimés et leurs examens repassent en « pending ».
+4. `pip install -r requirements-ml.txt`, puis `PRESCAN_ALLOW_DUMMY_MODEL=false` dans `inference-api/.env`.
+5. En production, les trois modèles pèsent ~220 Mo et nécessitent TensorFlow : utilisez Hugging Face Spaces (gratuit, 16 Go de RAM) plutôt que Render gratuit (512 Mo). Pas à pas : `docs/DEPLOY-INFERENCE.md`.
+
+Limite connue : `intracranial_tumor` et `vein_of_galen_malformation` étaient absentes des données d'entraînement du méta-modèle ; l'ensemble ne peut donc jamais les prédire.
+
 
 ---
 

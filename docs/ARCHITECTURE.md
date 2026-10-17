@@ -58,9 +58,9 @@ prescan/
 │   │   ├── main.py · config.py · errors.py · schemas.py · security.py · dependencies.py
 │   │   ├── routes/            # health.py · predict.py
 │   │   ├── services/          # preprocessing.py · model_registry.py · inference.py · model_config.py
-│   │   └── models/            # poids (.pt) — non versionnés
-│   ├── configs/               # densenet121-v1.yaml · ensemble-v1.example.yaml
-│   ├── tests/                 # 22 tests pytest
+│   │   └── models/            # poids (.keras / .h5) — non versionnés
+│   ├── configs/               # stacking-v1.yaml · stacking-v1.meta.json
+│   ├── tests/                 # tests pytest
 │   ├── Dockerfile · requirements*.txt
 └── web/
     └── src/
@@ -119,12 +119,15 @@ Page `/admin` (rôle `admin` uniquement, redirection sinon) : comptes, modèles,
 
 ## Intégrer le vrai modèle
 
-1. Déposer les poids dans `inference-api/app/models/densenet121_v1.pt` (jamais dans git).
-2. Remplacer `class_names` dans `configs/densenet121-v1.yaml` par vos 16 classes **dans l'ordre exact de l'entraînement**, et les mêmes clés dans `abnormality_classes` (migration `…_schema.sql`).
-3. Reporter `image_size`, `color_mode`, `mean`, `std` de l'entraînement.
-4. Si la tête du réseau diffère d'un `Linear`, adapter `TorchDenseNetAdapter` (`services/model_registry.py`).
-5. `pip install -r requirements-ml.txt`, puis `PRESCAN_ALLOW_DUMMY_MODEL=false` en production.
-6. Ensemble : copier `ensemble-v1.example.yaml` en `ensemble-v1.yaml`, ajouter la version dans `model_versions` et l'activer.
+Modèle en production : ensemble par stacking (MobileNetV2 + VGG16 + DenseNet121 → régression logistique), décrit par `configs/stacking-v1.yaml`.
+
+1. Déposer les poids Keras dans `inference-api/app/models/` (jamais dans git) : `mobilenetv2_best.keras`, `vgg16_best.h5`, `densenet121_best.h5`.
+2. Méta-modèle : `configs/stacking-v1.meta.json`, produit par `scripts/export_meta_model.py` depuis le pickle scikit-learn (recalculé en NumPy, sans scikit-learn en production).
+3. `class_names` = colonnes de `test/_classes.csv`, dans l'ordre ; mêmes clés dans `abnormality_classes` (migration `20261018000007_real_model.sql`).
+4. Prétraitement identique à l'entraînement : niveaux de gris → RGB, 224×224, ÷255 (`mean` 0, `std` 1). L'ordre de concaténation des réseaux (`keras_members`) est celui du méta-modèle.
+5. `pip install -r requirements-ml.txt` (TensorFlow CPU), puis `PRESCAN_ALLOW_DUMMY_MODEL=false` en production.
+6. Hébergement : Hugging Face Spaces (voir `docs/DEPLOY-INFERENCE.md`). Ajouter un autre modèle : un nouveau YAML, une ligne dans `model_versions`, puis l'activer depuis l'administration.
+
 
 **Séparation entraînement/test.** Exportez les jeux de données en groupant par `patients.id` (ou `anonymous_code`) : toutes les images d'un patient vont dans le même sous-ensemble (`GroupShuffleSplit`), jamais réparties entre entraînement et test.
 

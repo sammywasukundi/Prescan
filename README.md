@@ -2,14 +2,14 @@
 
 # PreScan
 
-A screening-aid platform for fetal brain abnormalities from prenatal ultrasound images, reserved for authenticated physicians. A physician uploads an image; PreScan has a model (DenseNet121, ensemble possible) classify it into 16 categories, shows the confidence and the probabilities, and lets the physician validate or correct the result.
+A screening-aid platform for fetal brain abnormalities from prenatal ultrasound images, reserved for authenticated physicians. A physician uploads an image; PreScan has a model (ensemble of MobileNetV2, VGG16 and DenseNet121) classify it into 16 categories, shows the confidence and the probabilities, and lets the physician validate or correct the result.
 
 > This result is a screening aid and must be confirmed by a healthcare professional.
 
 **Current status: prototype.**
 
 - The bundled model is a **dummy model**: its results are random and flagged as such in the interface (red banner).
-- The 16 classes in the schema are **provisional**: replace them with your own (see `docs/ARCHITECTURE.md`, section "Plugging in the real model").
+- The 16 classes are those of the trained model (migration `20261018000007_real_model.sql`); until it is applied and the weights are deployed, the API runs a **dummy model**.
 
 | Folder | Contents |
 |---|---|
@@ -385,12 +385,16 @@ At the next start, simply run: `npx supabase start`, then terminals B (activate 
 
 ## Plugging in the real model
 
-1. Put the weights in `inference-api/app/models/densenet121_v1.pt` (they are never versioned in git).
-2. In `inference-api/configs/densenet121-v1.yaml`, replace `class_names` with your 16 classes **in the exact training order**, and copy the preprocessing used at training time (size, colour, mean, standard deviation).
-3. Update the 16 rows of `abnormality_classes` (migration `…_schema.sql`, then `npx supabase db reset`) with the same `class_key` values.
-4. `pip install -r requirements-ml.txt`, then set `PRESCAN_ALLOW_DUMMY_MODEL=false` in `inference-api/.env`.
+The trained model is a **stacking ensemble**: MobileNetV2 + VGG16 + DenseNet121 (Keras) whose 16 probabilities each are concatenated and fed to a logistic-regression meta-model (`inference-api/configs/stacking-v1.yaml`).
 
-Details and the "ensemble" variant: `docs/ARCHITECTURE.md`.
+1. Put the three weight files in `inference-api/app/models/`: `mobilenetv2_best.keras`, `vgg16_best.h5`, `densenet121_best.h5` (never versioned in git).
+2. The meta-model is already exported as `configs/stacking-v1.meta.json` (re-export with `scripts/export_meta_model.py` if you retrain it).
+3. Apply the migration `20261018000007_real_model.sql` (`npx supabase db push`): it replaces the provisional classes with the 16 real ones (same order as the config) and activates `stacking-v1`. Results produced by the dummy model are removed and their exams return to "pending".
+4. `pip install -r requirements-ml.txt`, then set `PRESCAN_ALLOW_DUMMY_MODEL=false` in `inference-api/.env`.
+5. For production the three models weigh about 220 MB and need TensorFlow: use Hugging Face Spaces (free, 16 GB RAM), not Render free (512 MB). Step by step: `docs/DEPLOY-INFERENCE.md`.
+
+Known limit: `intracranial_tumor` and `vein_of_galen_malformation` were absent from the meta-model's training data, so the ensemble can never predict them.
+
 
 ---
 
