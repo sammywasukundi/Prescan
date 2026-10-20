@@ -1,0 +1,148 @@
+From f90d91cd3f7cc973c7ebd63b8a756828e251fccb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 20 Oct 2026 07:03:02 +0000
+Subject: [PATCH] =?UTF-8?q?fix(inference):=20filtre=20d'images=20plus=20st?=
+ =?UTF-8?q?rict=20(2=20%=20de=20pixels=20color=C3=A9s,=20=C3=A9cart=20>=20?=
+ =?UTF-8?q?20),=20c=C3=B4t=C3=A9=20serveur=20et=20client?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LKoebLu6sPbfqSmCvv7D6G
+---
+ docs/ARCHITECTURE.md                       |  2 +-
+ inference-api/app/services/model_config.py |  9 +++--
+ inference-api/configs/stacking-v1.yaml     |  6 ++++
+ inference-api/tests/test_stacking.py       | 39 ++++++++++++++++++----
+ web/src/lib/validateImage.ts               |  8 ++---
+ 5 files changed, 48 insertions(+), 16 deletions(-)
+
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index 0042f93..81ebbcf 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -111,7 +111,7 @@ Page `/admin` (rôle `admin` uniquement, redirection sinon) : comptes, modèles,
+ | Situation | Détection | Comportement |
+ |---|---|---|
+ | Fichier vide / mauvais format / trop gros | navigateur, Edge Function, FastAPI | message précis avant tout envoi quand c'est possible |
+-| Image hors sujet (photo, capture d'écran très colorée) | FastAPI (`max_color_fraction`, `chroma_threshold`) | `not_ultrasound` (422), examen `failed`. Le Doppler couleur (petite zone) reste accepté ; une photo en niveaux de gris n'est pas détectée |
++| Image hors sujet (photo, capture d'écran très colorée) | FastAPI (`max_color_fraction`, `chroma_threshold`) | `not_ultrasound` (422), examen `failed`. Le Doppler couleur réglable ; une photo en niveaux de gris n'est pas détectée |
+ | Les réseaux de l'ensemble ne s'accordent pas | FastAPI (`members_agree`) | `low_confidence` forcé à vrai : bandeau « à vérifier », même si la probabilité affichée est élevée |
+ | Image illisible ou trop petite | navigateur (`createImageBitmap`), PIL | `unreadable_image`, examen `failed`, nouvel essai possible |
+ | Modèle indisponible / poids manquants | FastAPI → 503 | `model_unavailable`, bouton « Réessayer » (l'image n'est pas renvoyée) |
+diff --git a/inference-api/app/services/model_config.py b/inference-api/app/services/model_config.py
+index f293f8a..c078e26 100644
+--- a/inference-api/app/services/model_config.py
++++ b/inference-api/app/services/model_config.py
+@@ -10,11 +10,10 @@ class PreprocessingConfig(BaseModel):
+     mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
+     std: tuple[float, float, float] = (0.229, 0.224, 0.225)
+     min_input_size: int = 64
+-    # Garde-fou « n'est pas une échographie » : une échographie est quasi en niveaux de gris (le
+-    # Doppler couleur n'occupe qu'une petite zone). Si plus de cette fraction de pixels est nettement
+-    # colorée, l'image est refusée. `null` désactive le contrôle.
+-    max_color_fraction: float | None = Field(default=0.5, ge=0, le=1)
+-    chroma_threshold: int = Field(default=40, ge=1, le=255)  # écart max-min entre canaux RGB (0-255)
++    # Garde-fou « n'est pas une échographie » : une échographie est en niveaux de gris. Si plus de cette
++    # fraction de pixels est colorée, l'image est refusée. `null` désactive le contrôle.
++    max_color_fraction: float | None = Field(default=0.02, ge=0, le=1)
++    chroma_threshold: int = Field(default=20, ge=1, le=255)  # écart max-min entre canaux RGB (0-255)
+ 
+ 
+ class KerasMember(BaseModel):
+diff --git a/inference-api/configs/stacking-v1.yaml b/inference-api/configs/stacking-v1.yaml
+index 86f57fd..92a0a53 100644
+--- a/inference-api/configs/stacking-v1.yaml
++++ b/inference-api/configs/stacking-v1.yaml
+@@ -46,6 +46,12 @@ preprocessing:
+   mean: [0.0, 0.0, 0.0]
+   std: [1.0, 1.0, 1.0]
+   min_input_size: 64
++  # Garde-fou « n'est pas une échographie » : refus si plus de 2 % des pixels sont colorés (écart max-min
++  # entre canaux RGB > 20). Les 176 images du jeu de test sont en gris pur (écart max 15, 0 % au-dessus de 15).
++  # ⚠ Un Doppler couleur occupant plus de 2 % de l'image sera refusé : augmentez max_color_fraction si besoin.
++  # Garder ces deux valeurs identiques à web/src/lib/validateImage.ts. `null` désactive le contrôle.
++  max_color_fraction: 0.02
++  chroma_threshold: 20
+ 
+ # En dessous de ce seuil de confiance, l'interface affiche une alerte « confiance faible ».
+ low_confidence_threshold: 0.6
+diff --git a/inference-api/tests/test_stacking.py b/inference-api/tests/test_stacking.py
+index 9719e4f..898e385 100644
+--- a/inference-api/tests/test_stacking.py
++++ b/inference-api/tests/test_stacking.py
+@@ -100,18 +100,45 @@ def test_colorful_photo_is_rejected(client, auth):
+     assert r.status_code == 422 and r.json()["error"]["code"] == "not_ultrasound"
+ 
+ 
+-def test_gray_and_small_doppler_overlay_are_accepted():
++def test_gray_image_accepted_and_colored_zones_refused():
+     import io
+     from PIL import Image
++    from app.errors import NotAnUltrasound
+     from app.services.model_config import PreprocessingConfig
+     from app.services.preprocessing import colorful_fraction, preprocess_image
+ 
+-    img = Image.new("RGB", (200, 200), (120, 120, 120))
+-    assert colorful_fraction(img, 40) == 0
+-    img.paste((255, 0, 0), (0, 0, 50, 50))  # zone Doppler : ~6 % de l'image
++    cfg = PreprocessingConfig()
++    gray = Image.new("RGB", (200, 200), (120, 120, 120))
++    assert colorful_fraction(gray, cfg.chroma_threshold) == 0
++
++    def png(img):
++        buf = io.BytesIO(); img.save(buf, format="PNG"); return buf.getvalue()
++
++    preprocess_image(png(gray), cfg, 10_000_000)  # ne lève pas
++
++    tiny = gray.copy(); tiny.paste((255, 0, 0), (0, 0, 20, 20))        # 1 % : toléré
++    preprocess_image(png(tiny), cfg, 10_000_000)
++
++    doppler = gray.copy(); doppler.paste((255, 0, 0), (0, 0, 50, 50))  # ~6 % : refusé par défaut
++    with pytest.raises(NotAnUltrasound):
++        preprocess_image(png(doppler), cfg, 10_000_000)
++    # … mais acceptable si on relâche la règle dans le YAML.
++    preprocess_image(png(doppler), PreprocessingConfig(max_color_fraction=0.5), 10_000_000)
++
++
++def test_muted_photo_below_old_threshold_is_refused():
++    import io
++    from PIL import Image
++    from app.errors import NotAnUltrasound
++    from app.services.model_config import PreprocessingConfig
++    from app.services.preprocessing import preprocess_image
++
++    # Photo « peu saturée » : 38 % de pixels colorés seulement (cas de l'ancien seuil à 50 %).
++    img = Image.new("RGB", (100, 100), (110, 110, 110))
++    img.paste((150, 110, 100), (0, 0, 100, 38))
+     buf = io.BytesIO(); img.save(buf, format="PNG")
+-    assert 0 < colorful_fraction(img, 40) < 0.1
+-    preprocess_image(buf.getvalue(), PreprocessingConfig(), 10_000_000)  # ne lève pas
++    with pytest.raises(NotAnUltrasound):
++        preprocess_image(buf.getvalue(), PreprocessingConfig(), 10_000_000)
+ 
+ 
+ def test_disagreement_between_networks_flags_review(monkeypatch):
+diff --git a/web/src/lib/validateImage.ts b/web/src/lib/validateImage.ts
+index 5a6537b..928a1ba 100644
+--- a/web/src/lib/validateImage.ts
++++ b/web/src/lib/validateImage.ts
+@@ -2,10 +2,10 @@ import { MAX_IMAGE_BYTES } from "./types";
+ 
+ const MIN_SIDE = 64;
+ 
+-// Même règle que l'API d'inférence (configs/*.yaml : max_color_fraction, chroma_threshold) : une échographie
+-// est quasi en niveaux de gris (le Doppler couleur n'occupe qu'une petite zone). Le serveur revalide.
+-const MAX_COLOR_FRACTION = 0.5;
+-const CHROMA_THRESHOLD = 40;
++// Même règle que l'API d'inférence (inference-api/configs/stacking-v1.yaml : max_color_fraction,
++// chroma_threshold) : une échographie est en niveaux de gris. Garder ces valeurs identiques. Le serveur revalide.
++const MAX_COLOR_FRACTION = 0.02;
++const CHROMA_THRESHOLD = 20;
+ const SAMPLE_SIDE = 128;
+ 
+ /** Part des pixels (RGBA, 4 octets chacun) dont l'écart max-min entre canaux dépasse le seuil. */
+-- 
+2.43.0
+
