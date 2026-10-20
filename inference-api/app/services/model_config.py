@@ -10,11 +10,10 @@ class PreprocessingConfig(BaseModel):
     mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std: tuple[float, float, float] = (0.229, 0.224, 0.225)
     min_input_size: int = 64
-    # Garde-fou « n'est pas une échographie » : une échographie est quasi en niveaux de gris (le
-    # Doppler couleur n'occupe qu'une petite zone). Si plus de cette fraction de pixels est nettement
-    # colorée, l'image est refusée. `null` désactive le contrôle.
-    max_color_fraction: float | None = Field(default=0.5, ge=0, le=1)
-    chroma_threshold: int = Field(default=40, ge=1, le=255)  # écart max-min entre canaux RGB (0-255)
+    # Garde-fou « n'est pas une échographie » : une échographie est en niveaux de gris. Si plus de cette
+    # fraction de pixels est colorée, l'image est refusée. `null` désactive le contrôle.
+    max_color_fraction: float | None = Field(default=0.02, ge=0, le=1)
+    chroma_threshold: int = Field(default=20, ge=1, le=255)  # écart max-min entre canaux RGB (0-255)
 
 
 class KerasMember(BaseModel):

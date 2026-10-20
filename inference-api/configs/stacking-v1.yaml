@@ -46,6 +46,12 @@ preprocessing:
   mean: [0.0, 0.0, 0.0]
   std: [1.0, 1.0, 1.0]
   min_input_size: 64
+  # Garde-fou « n'est pas une échographie » : refus si plus de 2 % des pixels sont colorés (écart max-min
+  # entre canaux RGB > 20). Les 176 images du jeu de test sont en gris pur (écart max 15, 0 % au-dessus de 15).
+  # ⚠ Un Doppler couleur occupant plus de 2 % de l'image sera refusé : augmentez max_color_fraction si besoin.
+  # Garder ces deux valeurs identiques à web/src/lib/validateImage.ts. `null` désactive le contrôle.
+  max_color_fraction: 0.02
+  chroma_threshold: 20
 
 # En dessous de ce seuil de confiance, l'interface affiche une alerte « confiance faible ».
 low_confidence_threshold: 0.6

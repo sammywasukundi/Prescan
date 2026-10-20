@@ -2,10 +2,10 @@ import { MAX_IMAGE_BYTES } from "./types";
 
 const MIN_SIDE = 64;
 
-// Même règle que l'API d'inférence (configs/*.yaml : max_color_fraction, chroma_threshold) : une échographie
-// est quasi en niveaux de gris (le Doppler couleur n'occupe qu'une petite zone). Le serveur revalide.
-const MAX_COLOR_FRACTION = 0.5;
-const CHROMA_THRESHOLD = 40;
+// Même règle que l'API d'inférence (inference-api/configs/stacking-v1.yaml : max_color_fraction,
+// chroma_threshold) : une échographie est en niveaux de gris. Garder ces valeurs identiques. Le serveur revalide.
+const MAX_COLOR_FRACTION = 0.02;
+const CHROMA_THRESHOLD = 20;
 const SAMPLE_SIDE = 128;
 
 /** Part des pixels (RGBA, 4 octets chacun) dont l'écart max-min entre canaux dépasse le seuil. */

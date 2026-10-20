@@ -100,18 +100,45 @@ def test_colorful_photo_is_rejected(client, auth):
     assert r.status_code == 422 and r.json()["error"]["code"] == "not_ultrasound"
 
 
-def test_gray_and_small_doppler_overlay_are_accepted():
+def test_gray_image_accepted_and_colored_zones_refused():
     import io
     from PIL import Image
+    from app.errors import NotAnUltrasound
     from app.services.model_config import PreprocessingConfig
     from app.services.preprocessing import colorful_fraction, preprocess_image
 
-    img = Image.new("RGB", (200, 200), (120, 120, 120))
-    assert colorful_fraction(img, 40) == 0
-    img.paste((255, 0, 0), (0, 0, 50, 50))  # zone Doppler : ~6 % de l'image
+    cfg = PreprocessingConfig()
+    gray = Image.new("RGB", (200, 200), (120, 120, 120))
+    assert colorful_fraction(gray, cfg.chroma_threshold) == 0
+
+    def png(img):
+        buf = io.BytesIO(); img.save(buf, format="PNG"); return buf.getvalue()
+
+    preprocess_image(png(gray), cfg, 10_000_000)  # ne lève pas
+
+    tiny = gray.copy(); tiny.paste((255, 0, 0), (0, 0, 20, 20))        # 1 % : toléré
+    preprocess_image(png(tiny), cfg, 10_000_000)
+
+    doppler = gray.copy(); doppler.paste((255, 0, 0), (0, 0, 50, 50))  # ~6 % : refusé par défaut
+    with pytest.raises(NotAnUltrasound):
+        preprocess_image(png(doppler), cfg, 10_000_000)
+    # … mais acceptable si on relâche la règle dans le YAML.
+    preprocess_image(png(doppler), PreprocessingConfig(max_color_fraction=0.5), 10_000_000)
+
+
+def test_muted_photo_below_old_threshold_is_refused():
+    import io
+    from PIL import Image
+    from app.errors import NotAnUltrasound
+    from app.services.model_config import PreprocessingConfig
+    from app.services.preprocessing import preprocess_image
+
+    # Photo « peu saturée » : 38 % de pixels colorés seulement (cas de l'ancien seuil à 50 %).
+    img = Image.new("RGB", (100, 100), (110, 110, 110))
+    img.paste((150, 110, 100), (0, 0, 100, 38))
     buf = io.BytesIO(); img.save(buf, format="PNG")
-    assert 0 < colorful_fraction(img, 40) < 0.1
-    preprocess_image(buf.getvalue(), PreprocessingConfig(), 10_000_000)  # ne lève pas
+    with pytest.raises(NotAnUltrasound):
+        preprocess_image(buf.getvalue(), PreprocessingConfig(), 10_000_000)
 
 
 def test_disagreement_between_networks_flags_review(monkeypatch):
