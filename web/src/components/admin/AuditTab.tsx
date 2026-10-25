@@ -11,7 +11,7 @@ import type { MessageKey } from "@/lib/i18n/dictionaries";
 const ACTIONS = [
   "account.approve", "account.revoke", "model.create", "model.activate", "rag.ingest", "rag.delete", "rag.query",
   "patient.create", "exam.create", "prediction.create", "prediction.confirmed", "prediction.corrected",
-  "prediction.export", "profile.update",
+  "prediction.export", "prediction.delete", "profile.update",
 ];
 
 const FILTERS: { id: string; key: MessageKey; prefixes: string[] }[] = [

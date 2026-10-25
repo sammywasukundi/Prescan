@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Loader2, Printer, Share2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Download, Loader2, Printer, Share2, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
 import { dateLocale } from "@/lib/i18n/core";
@@ -23,6 +24,7 @@ interface Props {
 
 export function AnalysisDetail({ prediction: initial, imageUrl, imagePath, examDate, patientRef, gestationalAge, classes, me }: Props) {
   const { t, locale } = useI18n();
+  const router = useRouter();
   const [prediction, setPrediction] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -76,6 +78,23 @@ export function AnalysisDetail({ prediction: initial, imageUrl, imagePath, examD
     setBusy(false);
   }
 
+  async function remove() {
+    if (!window.confirm(t("an.deleteConfirm"))) return;
+    setBusy(true);
+    setMsg(null);
+    const supabase = createClient();
+    const { data: path, error } = await supabase.rpc("delete_analysis", { p_prediction_id: prediction.id });
+    if (error) {
+      setMsg({ kind: "error", text: t("an.deleteFailed") });
+      setBusy(false);
+      return;
+    }
+    // L'analyse est déjà supprimée en base ; l'échec du retrait de l'image n'est pas bloquant.
+    if (typeof path === "string" && path) await supabase.storage.from("ultrasounds").remove([path]);
+    router.push("/analyses");
+    router.refresh();
+  }
+
   async function print() {
     await createClient().rpc("log_prediction_export", { p_prediction_id: prediction.id, p_format: "print" });
     window.print();
@@ -108,6 +127,14 @@ export function AnalysisDetail({ prediction: initial, imageUrl, imagePath, examD
           <button type="button" onClick={print} className="btn-secondary"><Printer size={16} aria-hidden /> {t("an.exportPdf")}</button>
         </div>
         {msg && <p role={msg.kind === "error" ? "alert" : "status"} className={`text-sm ${msg.kind === "error" ? "text-danger" : "text-success"}`}>{msg.text}</p>}
+      </section>
+
+      <section aria-labelledby="del" className="card space-y-3 p-5 print:hidden">
+        <h2 id="del" className="flex items-center gap-2 font-semibold"><Trash2 size={18} className="text-danger" aria-hidden /> {t("an.deleteTitle")}</h2>
+        <p className="text-sm text-muted">{t("an.deleteHelp")}</p>
+        <button type="button" onClick={remove} disabled={busy} className="btn-secondary border-danger/60 text-danger">
+          <Trash2 size={16} aria-hidden /> {t("an.delete")}
+        </button>
       </section>
     </div>
   );
