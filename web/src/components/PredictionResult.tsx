@@ -1,13 +1,16 @@
 "use client";
 
 import { motion } from "motion/react";
-import { AlertTriangle, FlaskConical } from "lucide-react";
+import { AlertTriangle, ChevronDown, FlaskConical } from "lucide-react";
 import { ConfidenceRing } from "./ConfidenceRing";
 import { ProbabilityBars } from "./ProbabilityBars";
 import { ValidationPanel } from "./ValidationPanel";
 import { MedicalDisclaimer } from "./MedicalDisclaimer";
 import type { ClassInfo, Prediction } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/client";
+
+/** Probabilité minimale (5 %) pour qu'une classe alternative soit mise en avant. */
+const MIN_ALTERNATIVE = 0.05;
 
 interface Props {
   prediction: Prediction;
@@ -21,7 +24,10 @@ interface Props {
 export function PredictionResult({ prediction, previewUrl, classes, labels, onValidated, readOnly }: Props) {
   const { t } = useI18n();
   const ranked = Object.entries(prediction.probabilities).sort((a, b) => b[1] - a[1]);
-  const alternatives = ranked.filter(([key]) => key !== prediction.predicted_class).slice(0, 3);
+  const others = ranked.filter(([key]) => key !== prediction.predicted_class);
+  // Une alternative n'est montrée que si elle est significative ; quand le modèle est peu sûr,
+  // on affiche toujours les 3 meilleures pour aider la décision.
+  const alternatives = (prediction.low_confidence ? others : others.filter(([, p]) => p >= MIN_ALTERNATIVE)).slice(0, 3);
   const mainLabel = labels[prediction.predicted_class] ?? prediction.predicted_class;
 
   return (
@@ -67,27 +73,37 @@ export function PredictionResult({ prediction, previewUrl, classes, labels, onVa
 
       <section aria-labelledby="alternatives">
         <h3 id="alternatives" className="mb-3 font-semibold">{t("res.alternatives")}</h3>
-        <ol className="grid gap-3 sm:grid-cols-3">
-          {alternatives.map(([key, p], i) => (
-            <motion.li
-              key={key}
-              className="card p-4"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
-            >
-              <p className="text-sm text-muted">{t("res.nth", { n: i + 2 })}</p>
-              <p className="mt-0.5 font-medium">{labels[key] ?? key}</p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{(p * 100).toFixed(1)} %</p>
-            </motion.li>
-          ))}
-        </ol>
+        {alternatives.length === 0 ? (
+          <p className="card p-4 text-sm text-muted">{t("res.noAlt", { n: Math.round(MIN_ALTERNATIVE * 100) })}</p>
+        ) : (
+          <ol className="grid gap-3 sm:grid-cols-3">
+            {alternatives.map(([key, p], i) => (
+              <motion.li
+                key={key}
+                className="card p-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
+              >
+                <p className="text-sm text-muted">{t("res.nth", { n: i + 2 })}</p>
+                <p className="mt-0.5 font-medium">{labels[key] ?? key}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{(p * 100).toFixed(1)} %</p>
+              </motion.li>
+            ))}
+          </ol>
+        )}
       </section>
 
-      <section aria-labelledby="toutes" className="card p-5">
-        <h3 id="toutes" className="mb-4 font-semibold">{t("res.all", { n: ranked.length })}</h3>
-        <ProbabilityBars probabilities={prediction.probabilities} labels={labels} highlight={prediction.predicted_class} />
-      </section>
+      <details className="card group p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+          <span>{t("res.details", { n: ranked.length })}</span>
+          <ChevronDown size={18} className="text-muted transition-transform group-open:rotate-180 print:hidden" aria-hidden />
+        </summary>
+        <p className="mt-2 text-xs text-muted">{t("res.detailsHelp")}</p>
+        <div className="mt-4">
+          <ProbabilityBars probabilities={prediction.probabilities} labels={labels} highlight={prediction.predicted_class} />
+        </div>
+      </details>
 
       <ValidationPanel prediction={prediction} classes={classes} labels={labels} onValidated={onValidated} readOnly={readOnly} />
       <MedicalDisclaimer />
