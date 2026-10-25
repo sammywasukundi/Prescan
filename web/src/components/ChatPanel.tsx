@@ -14,7 +14,7 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  "Comment PreScan analyse-t-il une échographie ?",
+  "Comment NeuroScan analyse-t-il une échographie ?",
   "Que signifie une confiance faible ?",
   "Quelles sont les limites du modèle ?",
   "Comment fonctionne la validation médicale ?",
@@ -100,14 +100,14 @@ export function ChatPanel() {
   return (
     <div className="flex h-[calc(100vh-13rem)] min-h-[28rem] flex-col">
       <div className="mb-3 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-muted" role="note">
-        L'assistant explique PreScan, les classes d'anomalies et les limites du modèle à partir de la base documentaire. Il ne pose aucun diagnostic et n'interprète aucune image.
+        L'assistant explique NeuroScan, les classes d'anomalies et les limites du modèle à partir de la base documentaire. Il ne pose aucun diagnostic et n'interprète aucune image.
       </div>
 
       <div className="card flex-1 space-y-5 overflow-y-auto p-4" aria-live="polite" aria-busy={streaming}>
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <BookOpen size={28} className="text-primary" aria-hidden />
-            <p className="text-muted">Posez une question sur PreScan.</p>
+            <p className="text-muted">Posez une question sur NeuroScan.</p>
             <div className="flex max-w-xl flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
                 <button key={s} type="button" onClick={() => send(s)} className="btn-secondary !py-2 text-left">{s}</button>

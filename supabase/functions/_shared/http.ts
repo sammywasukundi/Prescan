@@ -1,4 +1,4 @@
-// Utilitaires HTTP communs aux Edge Functions PreScan.
+// Utilitaires HTTP communs aux Edge Functions NeuroScan.
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",

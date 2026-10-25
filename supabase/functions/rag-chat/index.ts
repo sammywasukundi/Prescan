@@ -16,11 +16,11 @@ const MAX_MESSAGE_CHARS = 1000;
 const MAX_HISTORY = 6;
 const MODEL = Deno.env.get("RAG_LLM_MODEL") ?? "claude-sonnet-5-5";
 
-const SYSTEM_PROMPT = `Tu es l'assistant documentaire de PreScan, une plateforme d'aide au dépistage des anomalies cérébrales fœtales destinée à des médecins.
+const SYSTEM_PROMPT = `Tu es l'assistant documentaire de NeuroScan, une plateforme d'aide au dépistage des anomalies cérébrales fœtales destinée à des médecins.
 
 Règles impératives :
 - Réponds uniquement à partir des SOURCES fournies, en citant les numéros entre crochets, par exemple [1] ou [2][3]. Si les sources ne contiennent pas la réponse, dis-le clairement ; n'invente rien.
-- Tu expliques le fonctionnement de PreScan, les classes d'anomalies et les limites du modèle.
+- Tu expliques le fonctionnement de NeuroScan, les classes d'anomalies et les limites du modèle.
 - Tu ne poses JAMAIS de diagnostic, tu n'interprètes aucune image d'échographie et tu ne commentes pas le cas d'un patient précis. Si on te le demande, rappelle que seul un professionnel de santé qualifié peut interpréter l'examen et que tu n'as pas accès aux images.
 - Rappelle, quand c'est pertinent, que tout résultat du modèle est une aide au dépistage à confirmer par un professionnel de santé.
 - Réponds dans la langue de la question (français par défaut), de façon concise et structurée.
@@ -32,10 +32,10 @@ const DIAGNOSIS_REQUEST =
 const REFUSAL =
   "Je ne peux pas poser de diagnostic ni interpréter une image ou un cas patient : seul un professionnel de santé qualifié peut le faire, et je n'ai pas accès aux images. " +
   "Utilisez la page « Nouvelle analyse » pour obtenir une aide au dépistage, à confirmer par vos soins. " +
-  "Je peux en revanche vous expliquer le fonctionnement de PreScan, les classes d'anomalies ou les limites du modèle.";
+  "Je peux en revanche vous expliquer le fonctionnement de NeuroScan, les classes d'anomalies ou les limites du modèle.";
 
 const NO_SOURCE =
-  "Je n'ai trouvé aucune information pertinente dans la base documentaire de PreScan pour répondre à cette question. " +
+  "Je n'ai trouvé aucune information pertinente dans la base documentaire de NeuroScan pour répondre à cette question. " +
   "Reformulez-la, ou demandez à un administrateur d'ajouter le document manquant.";
 
 const encoder = new TextEncoder();
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       throw new HttpError(llm.status === 429 ? 429 : 503, "assistant_unavailable", "L'assistant est momentanément indisponible.");
     }
 
-    // Relais du flux Anthropic → événements SSE PreScan.
+    // Relais du flux Anthropic → événements SSE NeuroScan.
     const upstream = llm.body.getReader();
     const decoder = new TextDecoder();
     return sseResponse(new ReadableStream({

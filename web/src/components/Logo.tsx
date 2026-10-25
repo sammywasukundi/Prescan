@@ -8,7 +8,7 @@ export function Logo({ href = "/" }: { href?: string }) {
         <path d="M14 14 L14 2 A12 12 0 0 1 24.4 8 Z" fill="rgb(var(--primary))" opacity="0.9" />
         <circle cx="14" cy="14" r="2.2" fill="rgb(var(--fg))" />
       </svg>
-      <span className="text-lg">PreScan</span>
+      <span className="text-lg">NeuroScan</span>
     </Link>
   );
 }

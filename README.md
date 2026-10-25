@@ -1,8 +1,8 @@
 **English** · [Français](README.fr.md)
 
-# PreScan
+# NeuroScan
 
-A screening-aid platform for fetal brain abnormalities from prenatal ultrasound images, reserved for authenticated physicians. A physician uploads an image; PreScan has a model (ensemble of MobileNetV2, VGG16 and DenseNet121) classify it into 16 categories, shows the confidence and the probabilities, and lets the physician validate or correct the result.
+A screening-aid platform for fetal brain abnormalities from prenatal ultrasound images, reserved for authenticated physicians. A physician uploads an image; NeuroScan has a model (ensemble of MobileNetV2, VGG16 and DenseNet121) classify it into 16 categories, shows the confidence and the probabilities, and lets the physician validate or correct the result.
 
 > This result is a screening aid and must be confirmed by a healthcare professional.
 
@@ -211,7 +211,7 @@ Open http://localhost:3000. The **FR/EN** button switches the language and the m
 
 ## Accounts: administrator and physicians
 
-PreScan has two roles:
+NeuroScan has two roles:
 
 | Role | Can | Cannot |
 |---|---|---|
@@ -244,7 +244,7 @@ where id = (select id from auth.users where email = 'admin@example.org');
 Each physician signs up on their own through **Request access**. Then sign in with the **administrator** account: you land on the **Administration** page.
 
 1. **Accounts** tab: requests appear under "Awaiting validation".
-2. Click **Approve**. The physician can now sign in and use PreScan.
+2. Click **Approve**. The physician can now sign in and use NeuroScan.
 3. **Remove access** suspends a physician at any time; their account and data remain in the database.
 
 Administrators are redirected to `/admin`, physicians to `/dashboard`. Every approval or removal is recorded in the **Audit log** tab.
@@ -307,7 +307,7 @@ $jwt = $login.access_token
 
 # 2. Index a document
 $content = Get-Content supabase\seed\rag\01-fonctionnement-prescan.md -Raw -Encoding UTF8
-$json = @{ title = "How PreScan works"; content = $content } | ConvertTo-Json
+$json = @{ title = "How NeuroScan works"; content = $content } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$url/functions/v1/rag-ingest" `
   -Headers @{ Authorization = "Bearer $jwt"; apikey = $anon } `
   -ContentType "application/json; charset=utf-8" `
@@ -404,7 +404,7 @@ RLS on every table · private image bucket · no secret in the browser · servic
 
 The `.env`, `.env.local` and `supabase/functions/.env` files are ignored by git: never commit them.
 
-PreScan is **not** a diagnostic device. Before any clinical use: model validation, regulatory compliance and health-data protection according to your country.
+NeuroScan is **not** a diagnostic device. Before any clinical use: model validation, regulatory compliance and health-data protection according to your country.
 
 ## Documentation
 

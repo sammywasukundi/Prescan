@@ -35,7 +35,7 @@ git lfs install
 git clone https://huggingface.co/spaces/<votre-compte>/prescan-inference
 cd prescan-inference
 
-# depuis le dépôt PreScan
+# depuis le dépôt NeuroScan
 $src = "D:\web\prescan\inference-api"
 Copy-Item $src\app, $src\configs -Destination . -Recurse
 Copy-Item $src\requirements.txt, $src\requirements-ml.txt -Destination .
@@ -47,7 +47,7 @@ Copy-Item $src\space\gitattributes.txt -Destination .\.gitattributes -Force
 Copy-Item D:\masters\hackathon\Asetailion\mobilenetv2_best.keras, D:\masters\hackathon\Asetailion\vgg16_best.h5, D:\masters\hackathon\Asetailion\densenet121_best.h5 -Destination .\app\models\
 
 git add -A
-git commit -m "PreScan inference API"
+git commit -m "NeuroScan inference API"
 git push
 ```
 

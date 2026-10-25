@@ -1,4 +1,4 @@
-# Architecture PreScan
+# Architecture NeuroScan
 
 ## Vue d'ensemble
 

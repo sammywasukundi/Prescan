@@ -2,7 +2,7 @@ import { defineMessages } from "../core";
 
 export const common = defineMessages(
   {
-    "common.appName": "PreScan",
+    "common.appName": "NeuroScan",
     "common.signIn": "Se connecter",
     "common.signOut": "Se déconnecter",
     "common.requestAccess": "Demander un accès",
@@ -37,7 +37,7 @@ export const common = defineMessages(
     "assistant.ok": "Compris",
   },
   {
-    "common.appName": "PreScan",
+    "common.appName": "NeuroScan",
     "common.signIn": "Sign in",
     "common.signOut": "Sign out",
     "common.requestAccess": "Request access",

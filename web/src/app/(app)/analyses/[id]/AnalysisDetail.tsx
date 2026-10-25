@@ -70,7 +70,7 @@ export function AnalysisDetail({ prediction: initial, imageUrl, imagePath, examD
       };
       const { error: logError } = await supabase.rpc("log_prediction_export", { p_prediction_id: prediction.id, p_format: "json" });
       if (logError) throw new Error("audit");
-      downloadJson(file, `prescan-${patientRef}-${prediction.id.slice(0, 8)}.json`);
+      downloadJson(file, `neuroscan-${patientRef}-${prediction.id.slice(0, 8)}.json`);
       setMsg({ kind: "ok", text: t("an.exported") });
     } catch {
       setMsg({ kind: "error", text: t("an.exportFailed") });

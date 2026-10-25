@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="PreScan Inference API",
+        title="NeuroScan Inference API",
         version="0.1.0",
         docs_url="/docs" if settings.enable_docs else None,
         redoc_url=None,

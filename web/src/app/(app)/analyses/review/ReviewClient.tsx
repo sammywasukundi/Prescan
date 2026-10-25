@@ -60,7 +60,7 @@ export function ReviewClient({ me }: { me: Person }) {
         },
       ],
     };
-    downloadJson(updated, `prescan-${loaded.data.case.patient_ref}-reviewed.json`);
+    downloadJson(updated, `neuroscan-${loaded.data.case.patient_ref}-reviewed.json`);
   }
 
   const data = loaded?.data;

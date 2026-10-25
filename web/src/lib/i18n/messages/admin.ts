@@ -13,7 +13,7 @@ export const admin = defineMessages(
     "adm.tab.audit": "Journal d'audit",
     // Comptes
     "acc.loadError": "Impossible de charger les comptes.",
-    "acc.confirmRevoke": "Retirer l'accès de {who} ? Il ne pourra plus se servir de PreScan.",
+    "acc.confirmRevoke": "Retirer l'accès de {who} ? Il ne pourra plus se servir de NeuroScan.",
     "acc.updateFailed": "La modification a échoué.",
     "acc.searchLabel": "Rechercher un compte",
     "acc.search": "Rechercher (e-mail, nom, établissement)…",
@@ -147,7 +147,7 @@ export const admin = defineMessages(
     "adm.tab.documents": "Assistant documents",
     "adm.tab.audit": "Audit log",
     "acc.loadError": "Unable to load accounts.",
-    "acc.confirmRevoke": "Remove access for {who}? They will no longer be able to use PreScan.",
+    "acc.confirmRevoke": "Remove access for {who}? They will no longer be able to use NeuroScan.",
     "acc.updateFailed": "The update failed.",
     "acc.searchLabel": "Search accounts",
     "acc.search": "Search (email, name, institution)…",
